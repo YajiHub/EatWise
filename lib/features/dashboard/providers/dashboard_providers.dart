@@ -48,3 +48,8 @@ final dailyTotalsProvider = FutureProvider.family<Map<String, double>, String>((
   ref.watch(logVersionProvider);
   return AppDatabase.getDailyTotals(dateStr);
 });
+
+final dailyLogsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, dateStr) async {
+  ref.watch(logVersionProvider);
+  return AppDatabase.getLogsForDate(dateStr);
+});

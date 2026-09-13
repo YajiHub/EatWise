@@ -4,14 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:eatwise/core/database/app_database.dart';
-import 'package:eatwise/features/dashboard/presentation/widgets/calorie_ring_chart.dart';
+import 'package:eatwise/core/constants/app_colors.dart';
+import 'package:eatwise/core/theme/theme_mode_provider.dart';
+import 'package:eatwise/features/dashboard/presentation/widgets/athletic_hero_dial.dart';
+import 'package:eatwise/features/dashboard/presentation/widgets/macro_pill_trio.dart';
+import 'package:eatwise/features/dashboard/presentation/widgets/todays_fuel_section.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/daily_insight_card.dart';
 import 'package:eatwise/features/dashboard/presentation/providers/daily_insight_provider.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/weight_card.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/weekly_calorie_chart.dart';
-import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/fasting_timer_widget.dart';
-import 'package:eatwise/core/theme/theme_mode_provider.dart';
 import 'package:eatwise/features/planner/presentation/widgets/planner_summary_card.dart';
 import 'package:eatwise/features/dashboard/providers/dashboard_providers.dart';
 export 'package:eatwise/features/dashboard/providers/dashboard_providers.dart';
@@ -24,10 +26,10 @@ class DashboardScreen extends ConsumerWidget {
     final selectedDate = ref.watch(selectedDateProvider);
     final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
     final totalsAsync = ref.watch(dailyTotalsProvider(dateStr));
-    final consumed = totalsAsync.valueOrNull?['calories'] ?? 0;
-    final protein = totalsAsync.valueOrNull?['protein'] ?? 0;
-    final carbs = totalsAsync.valueOrNull?['carbs'] ?? 0;
-    final fats = totalsAsync.valueOrNull?['fats'] ?? 0;
+    final consumed = totalsAsync.valueOrNull?['calories'] ?? 0.0;
+    final protein = totalsAsync.valueOrNull?['protein'] ?? 0.0;
+    final carbs = totalsAsync.valueOrNull?['carbs'] ?? 0.0;
+    final fats = totalsAsync.valueOrNull?['fats'] ?? 0.0;
     final target = ref.watch(targetCaloriesProvider);
     final targetProtein = ref.watch(targetProteinProvider);
     final targetCarbs = ref.watch(targetCarbsProvider);
@@ -37,16 +39,20 @@ class DashboardScreen extends ConsumerWidget {
     final isDark = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final fastingEnabled = ref.watch(fastingEnabledProvider).valueOrNull ?? false;
 
     return Scaffold(
       extendBody: true,
       floatingActionButton: FloatingActionButton(
         tooltip: 'Log a meal',
         onPressed: () => context.go('/chat-log'),
-        child: const Icon(Icons.edit_note_rounded),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
+        elevation: 6,
+        child: const Icon(Icons.edit_note_rounded, size: 28),
       ),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: const Size.fromHeight(68),
         child: _HomeHeader(
           userName: ref.watch(userNameProvider).valueOrNull ?? '',
           isDark: isDark,
@@ -54,76 +60,89 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.only(bottom: 96),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
-            // ── Macro Ring (tap to edit calorie target) ──
-            Center(
-              child: GestureDetector(
-                onTap: () => _editCalorieTarget(context, ref),
-                child: CalorieRingChart(consumed: consumed, target: target),
-              ),
+            // ── Hero Concentric Dial (Calorie Budget + Fasting Ring) ──
+            AthleticHeroDialCard(
+              consumed: consumed,
+              target: target,
+              fastingLabel: fastingEnabled ? '16:8 Fasting • Active' : 'Target Calorie Budget',
+              fastingProgress: fastingEnabled ? 0.72 : 1.0,
+              onTap: () => _editCalorieTarget(context, ref),
             ),
 
-            // ── Macro Rings ──
-            const SizedBox(height: 16),
-            MacroRingsRow(
+            const SizedBox(height: 8),
+
+            // ── Athletic 3-Pill Macro Telemetry Row (Protein, Carbs, Fats) ──
+            MacroBreakdownPillTrio(
               proteinConsumed: protein,
               proteinTarget: targetProtein,
               carbsConsumed: carbs,
               carbsTarget: targetCarbs,
               fatsConsumed: fats,
               fatsTarget: targetFats,
-              size: 90,
             ),
 
+            const SizedBox(height: 10),
+
+            // ── Fast AI Log Action Button ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _EditableMacroChip(
-                      label: 'Protein',
-                      consumed: protein,
-                      target: targetProtein,
-                      color: AppColors.protein,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.go('/chat-log'),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF00C853)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.28),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, color: Colors.black, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Log Meal with AI Coach',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _EditableMacroChip(
-                      label: 'Carbs',
-                      consumed: carbs,
-                      target: targetCarbs,
-                      color: AppColors.carbs,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _EditableMacroChip(
-                      label: 'Fats',
-                      consumed: fats,
-                      target: targetFats,
-                      color: AppColors.fats,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 4),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: FilledButton.icon(
-                onPressed: () => context.go('/chat-log'),
-                icon: const Icon(Icons.auto_awesome_outlined),
-                label: const Text('Log a meal with AI'),
-              ),
-            ),
+            const SizedBox(height: 12),
 
+            // ── Today's Fuel Section (Logged Meals Timeline) ──
+            TodaysFuelSection(dateStr: dateStr),
+
+            const SizedBox(height: 10),
+
+            // ── Daily Nutrition Insight Card ──
             DailyInsightCard(
               remaining: RemainingMacros(
                 calories: target - consumed,
@@ -132,20 +151,28 @@ class DashboardScreen extends ConsumerWidget {
                 fats: targetFats - fats,
               ),
             ),
-            const SizedBox(height: 8),
 
+            const SizedBox(height: 12),
+
+            // ── Weekly Calorie Bar Chart ──
             WeeklyCalorieBarChart(targetCalories: target),
-            const SizedBox(height: 8),
 
-            if (ref.watch(fastingEnabledProvider).valueOrNull == true) ...[
+            const SizedBox(height: 12),
+
+            // ── Fasting Schedule (if enabled) ──
+            if (fastingEnabled) ...[
               const FastingTimerWidget(),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
 
+            // ── Meal Planner Summary ──
             const PlannerSummaryCard(),
-            const SizedBox(height: 8),
+
+            const SizedBox(height: 12),
+
+            // ── Weight Tracking Card ──
             const WeightCard(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -192,118 +219,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _EditableMacroChip extends ConsumerWidget {
-  final String label;
-  final double consumed;
-  final double target;
-  final Color color;
-
-  const _EditableMacroChip({
-    required this.label,
-    required this.consumed,
-    required this.target,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ratio = target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0;
-
-    return GestureDetector(
-      onTap: () => _editTarget(context, ref),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${consumed.toStringAsFixed(0)}g',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              Text(
-                'of ${target.toStringAsFixed(0)}g',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: ratio,
-                  minHeight: 6,
-                  color: color,
-                  backgroundColor: color.withValues(alpha: 0.12),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _editTarget(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController(text: target.toStringAsFixed(0));
-    final provider = label == 'Protein'
-        ? targetProteinProvider
-        : label == 'Carbs'
-            ? targetCarbsProvider
-            : targetFatsProvider;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('$label Target'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            labelText: '$label per day',
-            suffixText: 'g',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final val = double.tryParse(controller.text);
-              if (val != null && val > 0) {
-                ref.read(provider.notifier).state = val;
-                final key = label == 'Protein' ? 'target_protein' : label == 'Carbs' ? 'target_carbs' : 'target_fats';
-                AppDatabase.setSetting(key, val.toStringAsFixed(1));
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HomeHeader extends StatelessWidget {
   final String userName;
   final bool isDark;
@@ -319,7 +234,7 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
     final greeting =
-        hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        hour < 12 ? 'Magandang Umaga' : hour < 17 ? 'Magandang Hapon' : 'Magandang Gabi';
     final initials = (userName.isNotEmpty ? userName : 'EatWise')
         .split(' ')
         .where((w) => w.isNotEmpty)
@@ -327,50 +242,119 @@ class _HomeHeader extends StatelessWidget {
         .map((w) => w[0])
         .join()
         .toUpperCase();
-    final nameLine = userName.isNotEmpty ? userName : 'Welcome back';
+    final nameLine = userName.isNotEmpty ? userName : 'Ka-Fit';
 
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             GestureDetector(
               onTap: () => context.go('/profile'),
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                child: Text(initials,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 19,
+                  backgroundColor: isDark
+                      ? AppColors.surfaceContainerHigh
+                      : AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    initials,
                     style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14)),
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(greeting,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                Text(nameLine,
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'DAILY OVERVIEW',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.carbs.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(
+                            color: AppColors.carbs.withValues(alpha: 0.35),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '🔥 7d streak',
+                              style: TextStyle(
+                                color: AppColors.carbs,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$greeting, $nameLine',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
             IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
-              onPressed: () => context.push('/settings'),
-            ),
-            IconButton(
-              icon: Icon(isDark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined),
+              icon: Icon(
+                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                size: 22,
+                color: isDark ? AppColors.textSecondaryDark : Colors.black54,
+              ),
               tooltip: isDark ? 'Switch to Light' : 'Switch to Dark',
               onPressed: onToggleTheme,
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                size: 22,
+                color: isDark ? AppColors.textSecondaryDark : Colors.black54,
+              ),
+              tooltip: 'Settings',
+              onPressed: () => context.push('/settings'),
             ),
           ],
         ),
@@ -378,3 +362,4 @@ class _HomeHeader extends StatelessWidget {
     );
   }
 }
+
