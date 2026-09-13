@@ -16,11 +16,20 @@ class AiConfig {
     _cachedOpenRouterKey = (await SecureStorageService.getOpenRouterApiKey()) ?? '';
   }
 
+  static String _envLookup(String name) {
+    try {
+      if (dotenv.isInitialized) {
+        return dotenv.env[name] ?? '';
+      }
+    } catch (_) {}
+    return '';
+  }
+
   static String get geminiApiKey {
     if (_cachedGeminiKey.isNotEmpty) return _cachedGeminiKey;
     const envKey = String.fromEnvironment('GEMINI_API_KEY');
     if (envKey.isNotEmpty) return envKey;
-    final key = dotenv.env['GEMINI_API_KEY'] ?? '';
+    final key = _envLookup('GEMINI_API_KEY');
     if (kDebugMode && key.isEmpty) {
       debugPrint('[AiConfig] ⚠️ GEMINI_API_KEY not configured');
     }
@@ -31,7 +40,7 @@ class AiConfig {
     if (_cachedGroqKey.isNotEmpty) return _cachedGroqKey;
     const envKey = String.fromEnvironment('GROQ_API_KEY');
     if (envKey.isNotEmpty) return envKey;
-    final key = dotenv.env['GROQ_API_KEY'] ?? '';
+    final key = _envLookup('GROQ_API_KEY');
     if (kDebugMode && key.isEmpty) {
       debugPrint('[AiConfig] ⚠️ GROQ_API_KEY not configured');
     }
@@ -42,7 +51,7 @@ class AiConfig {
     if (_cachedOpenRouterKey.isNotEmpty) return _cachedOpenRouterKey;
     const envKey = String.fromEnvironment('OPENROUTER_API_KEY');
     if (envKey.isNotEmpty) return envKey;
-    final key = dotenv.env['OPENROUTER_API_KEY'] ?? '';
+    final key = _envLookup('OPENROUTER_API_KEY');
     if (kDebugMode && key.isEmpty) {
       debugPrint('[AiConfig] ⚠️ OPENROUTER_API_KEY not configured');
     }

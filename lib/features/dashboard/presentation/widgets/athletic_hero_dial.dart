@@ -8,7 +8,6 @@ class AthleticHeroDialCard extends StatelessWidget {
   final double consumed;
   final double target;
   final String fastingLabel;
-  final double fastingProgress;
   final VoidCallback onTap;
 
   const AthleticHeroDialCard({
@@ -16,7 +15,6 @@ class AthleticHeroDialCard extends StatelessWidget {
     required this.consumed,
     required this.target,
     this.fastingLabel = '16:8 Fasting • Active',
-    this.fastingProgress = 0.7,
     required this.onTap,
   });
 
@@ -24,7 +22,10 @@ class AthleticHeroDialCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final remaining = target - consumed;
     final isOver = remaining < 0;
-    final ratio = target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0;
+    // Ring represents remaining calorie budget (1.0 = 100% full when 0 eaten)
+    final remainingRatio = target > 0
+        ? (isOver ? 1.0 : (remaining / target).clamp(0.0, 1.0))
+        : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -115,7 +116,7 @@ class AthleticHeroDialCard extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // ── Concentric Progress Dial ──
+                  // ── Progress Dial ──
                   SizedBox(
                     width: 210,
                     height: 210,
@@ -124,9 +125,8 @@ class AthleticHeroDialCard extends StatelessWidget {
                       children: [
                         CustomPaint(
                           size: const Size(210, 210),
-                          painter: _ConcentricDialPainter(
-                            calorieRatio: ratio,
-                            fastingRatio: fastingProgress.clamp(0.0, 1.0),
+                          painter: _AthleticDialPainter(
+                            remainingRatio: remainingRatio,
                             isDark: isDark,
                             isOver: isOver,
                           ),
@@ -220,8 +220,8 @@ class AthleticHeroDialCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Icon(
-                          Icons.edit_outlined,
-                          size: 12,
+                          Icons.arrow_forward_ios_rounded,
+                          size: 11,
                           color: isDark
                               ? AppColors.textSecondaryDark
                               : Colors.grey,
@@ -239,15 +239,13 @@ class AthleticHeroDialCard extends StatelessWidget {
   }
 }
 
-class _ConcentricDialPainter extends CustomPainter {
-  final double calorieRatio;
-  final double fastingRatio;
+class _AthleticDialPainter extends CustomPainter {
+  final double remainingRatio;
   final bool isDark;
   final bool isOver;
 
-  _ConcentricDialPainter({
-    required this.calorieRatio,
-    required this.fastingRatio,
+  _AthleticDialPainter({
+    required this.remainingRatio,
     required this.isDark,
     required this.isOver,
   });
@@ -255,70 +253,62 @@ class _ConcentricDialPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 14;
+    const strokeWidth = 14.0;
 
-    // ── Outer Ring (Calorie Budget) ──
-    final outerRadius = size.width / 2 - 12;
-    final outerTrackPaint = Paint()
+    // Background track
+    final trackPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..color = isDark
-          ? const Color(0x14FFFFFF) // 8% white
+          ? const Color(0x18FFFFFF) // 9% white track
           : const Color(0xFFE2E8F0);
 
-    canvas.drawCircle(center, outerRadius, outerTrackPaint);
+    canvas.drawCircle(center, radius, trackPaint);
 
-    if (calorieRatio > 0) {
-      final sweepAngle = 2 * math.pi * calorieRatio;
-      final outerActivePaint = Paint()
+    // Active Remaining Budget Arc
+    if (remainingRatio > 0) {
+      final activeColor = isOver ? Colors.redAccent : AppColors.primary;
+      final sweepAngle = 2 * math.pi * remainingRatio;
+
+      // Glow effect (Dark mode)
+      if (isDark) {
+        final glowPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth + 4
+          ..strokeCap = StrokeCap.round
+          ..color = activeColor.withValues(alpha: 0.25)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          -math.pi / 2,
+          sweepAngle,
+          false,
+          glowPaint,
+        );
+      }
+
+      final activePaint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 14
+        ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round
-        ..color = isOver ? Colors.redAccent : AppColors.primary;
+        ..color = activeColor;
 
       canvas.drawArc(
-        Rect.fromCircle(center: center, radius: outerRadius),
+        Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
         sweepAngle,
         false,
-        outerActivePaint,
-      );
-    }
-
-    // ── Inner Ring (Fasting Progress) ──
-    final innerRadius = outerRadius - 16;
-    final innerTrackPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..color = isDark
-          ? const Color(0x0FFFFFFF) // 6% white
-          : const Color(0xFFF1F5F9);
-
-    canvas.drawCircle(center, innerRadius, innerTrackPaint);
-
-    if (fastingRatio > 0) {
-      final fastingSweep = 2 * math.pi * fastingRatio;
-      final innerActivePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round
-        ..color = AppColors.fasting;
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: innerRadius),
-        -math.pi / 2,
-        fastingSweep,
-        false,
-        innerActivePaint,
+        activePaint,
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ConcentricDialPainter oldDelegate) {
-    return oldDelegate.calorieRatio != calorieRatio ||
-        oldDelegate.fastingRatio != fastingRatio ||
+  bool shouldRepaint(covariant _AthleticDialPainter oldDelegate) {
+    return oldDelegate.remainingRatio != remainingRatio ||
         oldDelegate.isDark != isDark ||
         oldDelegate.isOver != isOver;
   }

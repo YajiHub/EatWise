@@ -19,7 +19,7 @@ class DashboardRepository {
 
   Future<WeeklyStats> getWeeklyStats(List<String> dates) async {
     final rows = await AppDatabase.getWeekSummaries(dates);
-    final streak = await AppDatabase.getStreak(dates.last);
+    final streak = await AppDatabase.getStreak();
     return WeeklyStats.fromSummaries(rows, streak);
   }
 

@@ -56,6 +56,27 @@ class PlannerNotifier extends StateNotifier<PlannerState> {
     await PlannerTasksExtension.insertTasksBatch(homeWorkoutPreset(date));
     await load(date);
   }
+
+  Future<void> loadCustomPreset(String date, List<Map<String, dynamic>> presetTasks) async {
+    state = PlannerState(date: date, loading: true);
+    await PlannerTasksExtension.deleteAllTasksForDate(date);
+    await PlannerTasksExtension.insertTasksBatch(presetTasks);
+    await load(date);
+  }
+
+  Future<void> appendQuickHabit({
+    required String taskDate,
+    required String title,
+    required String subtitle,
+    required String category,
+  }) async {
+    await add(
+      taskDate: taskDate,
+      category: category,
+      title: title,
+      subtitle: subtitle,
+    );
+  }
 }
 
 final plannerNotifierProvider = StateNotifierProvider.autoDispose<PlannerNotifier, PlannerState>((ref) {

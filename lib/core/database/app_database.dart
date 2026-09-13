@@ -413,10 +413,37 @@ class AppDatabase {
     return getDateRangeTotals(startDate, endDate);
   }
 
-  static Future<int> getStreak(String anchorDate) async {
+  static Future<int> getStreak([String? anchorDate]) async {
     final db = await instance;
+    final now = DateTime.now();
+
+    DateTime startFrom;
+    if (anchorDate == null || anchorDate.trim().isEmpty) {
+      final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final todayCount = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM food_logs WHERE log_date = ?', [todayStr]),
+      ) ?? 0;
+
+      if (todayCount > 0) {
+        startFrom = now;
+      } else {
+        final yesterday = now.subtract(const Duration(days: 1));
+        final yesterdayStr = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+        final yesterdayCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM food_logs WHERE log_date = ?', [yesterdayStr]),
+        ) ?? 0;
+        if (yesterdayCount > 0) {
+          startFrom = yesterday;
+        } else {
+          return 0; // Inactive for 2+ days or weeks
+        }
+      }
+    } else {
+      startFrom = DateTime.tryParse(anchorDate) ?? now;
+    }
+
     int streak = 0;
-    var current = DateTime.tryParse(anchorDate) ?? DateTime.now();
+    var current = startFrom;
     while (true) {
       final dateStr = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';
       final count = Sqflite.firstIntValue(

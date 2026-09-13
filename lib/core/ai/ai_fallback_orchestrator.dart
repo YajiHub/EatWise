@@ -7,6 +7,7 @@ import 'package:eatwise/core/ai/openrouter_provider.dart';
 import 'package:eatwise/features/food_ai/data/gemini_vision_service.dart';
 import 'package:eatwise/features/food_ai/data/gemini_chat_service.dart';
 import 'package:eatwise/features/food_ai/domain/food_item.dart';
+import 'package:eatwise/core/ai/local_food_db.dart';
 
 class _CircuitBreakerState {
   int failureCount = 0;
@@ -83,19 +84,20 @@ class AiFallbackOrchestrator {
     }
 
     if (aiResult == null && text != null) {
-      // Gemini first — has broader training data including Filipino branded products
-      try {
-        final result = await _tryTextProvider(
-          'Gemini',
-          () => _visionGemini.parseChatMessage(text),
-          breaker: _breaker('gemini_food'),
-        );
-        if (result != null) {
-          aiResult = result as MealAnalysis;
-          providerUsed = 'Gemini';
+      if (AiConfig.geminiApiKey.isNotEmpty) {
+        try {
+          final result = await _tryTextProvider(
+            'Gemini',
+            () => _visionGemini.parseChatMessage(text),
+            breaker: _breaker('gemini_food'),
+          );
+          if (result != null) {
+            aiResult = result as MealAnalysis;
+            providerUsed = 'Gemini';
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('[Orchestrator] Gemini failed: $e');
         }
-      } on RateLimitedException {
-        if (kDebugMode) debugPrint('[Orchestrator] Gemini rate-limited');
       }
 
       if (aiResult == null && AiConfig.isGroqConfigured) {
@@ -133,6 +135,15 @@ class AiFallbackOrchestrator {
       }
     }
 
+    // Local FNRI baseline database fallback — ensures common Filipino meals & sample chips always succeed
+    if (aiResult == null && text != null && text.trim().isNotEmpty) {
+      final localMatch = _matchLocalBaseline(text);
+      if (localMatch != null) {
+        aiResult = localMatch;
+        providerUsed = 'FNRI Offline Database';
+      }
+    }
+
     if (aiResult == null) throw const AllProvidersExhaustedException('food');
 
     // Return AI result directly — no local DB overrides, no caching
@@ -155,15 +166,17 @@ class AiFallbackOrchestrator {
     String? response;
     String? provider;
 
-    // Gemini first — better conversational quality with broader training data
-    final geminiText = await _tryTextProvider(
-      'Gemini',
-      () => _chatGemini.sendMessage(contextMessage),
-      breaker: _breaker('gemini_chat'),
-    );
-    if (geminiText != null) {
-      response = geminiText as String;
-      provider = 'Gemini';
+    // Gemini first if key available
+    if (AiConfig.geminiApiKey.isNotEmpty) {
+      final geminiText = await _tryTextProvider(
+        'Gemini',
+        () => _chatGemini.sendMessage(contextMessage),
+        breaker: _breaker('gemini_chat'),
+      );
+      if (geminiText != null) {
+        response = geminiText as String;
+        provider = 'Gemini';
+      }
     }
 
     if (response == null && AiConfig.isGroqConfigured) {
@@ -190,7 +203,10 @@ class AiFallbackOrchestrator {
       }
     }
 
-    if (response == null) throw const AllProvidersExhaustedException('chat');
+    if (response == null) {
+      response = _offlineChatResponse(message);
+      provider = 'Local Assistant';
+    }
 
     _recentChatHistory.add(message);
     _recentChatHistory.add(response);
@@ -258,7 +274,7 @@ class AiFallbackOrchestrator {
       } on AiContentFilteredException {
         if (kDebugMode) debugPrint('[Orchestrator] $name content filtered');
         return null;
-      } on Exception catch (e) {
+      } catch (e) {
         if (kDebugMode) debugPrint('[Orchestrator] $name error (attempt ${attempt + 1}): $e');
         breaker.recordFailure();
         if (attempt >= 2) return null;
@@ -281,5 +297,122 @@ class AiFallbackOrchestrator {
     _geminiChat = null;
     _groqText?.dispose();
     _openRouter?.dispose();
+  }
+
+  /// Offline local baseline matcher for Filipino dishes and sample inputs
+  MealAnalysis? _matchLocalBaseline(String input) {
+    final lower = input.toLowerCase().trim();
+    if (lower.isEmpty) return null;
+
+    final separators = RegExp(r'\s*(?:&|\+|\band\b|\bwith\b|,|\bplus\b)\s*');
+    final segments = lower.split(separators).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) segments.add(lower);
+
+    final matchedFoods = <FoodItem>[];
+
+    for (final seg in segments) {
+      double quantity = 1.0;
+      String cleanSeg = seg;
+
+      final numMatch = RegExp(r'^(\d+(?:\.\d+)?)\s*(?:pcs?|pieces?|bowl|cups?|serving|servings|plates?|orders?|pc)?\s*(.*)$').firstMatch(cleanSeg);
+      if (numMatch != null) {
+        final parsed = double.tryParse(numMatch.group(1) ?? '');
+        if (parsed != null && parsed > 0) {
+          quantity = parsed;
+          cleanSeg = (numMatch.group(2) ?? '').trim();
+        }
+      } else if (cleanSeg.startsWith('half ')) {
+        quantity = 0.5;
+        cleanSeg = cleanSeg.substring(5).trim();
+      }
+
+      if (cleanSeg.isEmpty) cleanSeg = seg;
+
+      VerifiedFoodBaseline? bestMatch;
+      int bestScore = 0;
+
+      for (final baseline in verifiedFoodBaselines) {
+        final allNames = [baseline.canonicalName.toLowerCase(), ...baseline.searchNames.map((s) => s.toLowerCase())];
+        for (final name in allNames) {
+          if (cleanSeg == name) {
+            if (1000 > bestScore) {
+              bestScore = 1000;
+              bestMatch = baseline;
+            }
+          } else if (cleanSeg.contains(name)) {
+            final score = name.length * 10;
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = baseline;
+            }
+          } else if (name.contains(cleanSeg) && cleanSeg.length >= 3) {
+            final score = cleanSeg.length * 5;
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = baseline;
+            }
+          }
+        }
+      }
+
+      if (bestMatch != null) {
+        final servingGrams = (bestMatch.gramsPerServing != null && bestMatch.gramsPerServing! > 0)
+            ? bestMatch.gramsPerServing!
+            : 100.0;
+        final totalGrams = servingGrams * quantity;
+        final cal = (bestMatch.calPer100g * (totalGrams / 100.0)).roundToDouble();
+        final p = (bestMatch.proteinPer100g * (totalGrams / 100.0)).roundToDouble();
+        final c = (bestMatch.carbsPer100g * (totalGrams / 100.0)).roundToDouble();
+        final f = (bestMatch.fatPer100g * (totalGrams / 100.0)).roundToDouble();
+
+        final qStr = quantity == quantity.truncateToDouble() ? quantity.toInt().toString() : quantity.toStringAsFixed(1);
+        final portionDesc = '$qStr ${bestMatch.servingDescription ?? "serving"}';
+
+        matchedFoods.add(FoodItem(
+          name: bestMatch.canonicalName,
+          portionSizeGrams: totalGrams,
+          portionDescription: portionDesc,
+          calories: cal,
+          proteinG: p,
+          carbsG: c,
+          fatsG: f,
+          confidence: 0.95,
+          reasoning: 'Calibrated from official FNRI baseline database.',
+        ));
+      }
+    }
+
+    if (matchedFoods.isEmpty) return null;
+
+    final now = DateTime.now();
+    final hour = now.hour;
+    final mealType = (hour >= 5 && hour < 11)
+        ? 'breakfast'
+        : (hour >= 11 && hour < 15)
+            ? 'lunch'
+            : (hour >= 17 && hour < 22)
+                ? 'dinner'
+                : 'snack';
+
+    return MealAnalysis(
+      foods: matchedFoods,
+      totalCalories: matchedFoods.fold(0.0, (sum, f) => sum + f.calories),
+      totalProtein: matchedFoods.fold(0.0, (sum, f) => sum + f.proteinG),
+      totalCarbs: matchedFoods.fold(0.0, (sum, f) => sum + f.carbsG),
+      totalFats: matchedFoods.fold(0.0, (sum, f) => sum + f.fatsG),
+      summary: input,
+      mealType: mealType,
+    );
+  }
+
+  String _offlineChatResponse(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains('hello') || lower.contains('hi') || lower.contains('hey')) {
+      return 'Hello! I am your AI Nutrition Coach. You can log meals by typing what you ate (e.g., "Chicken Inasal with sinangag") or snapping a photo!';
+    }
+    if (lower.contains('macro') || lower.contains('target') || lower.contains('goal') || lower.contains('calorie')) {
+      return 'Your daily macro targets are tracked on your Hub screen. For best results, balance lean proteins, smart carbs, and healthy fats across your meals.';
+    }
+    return 'I am currently operating in offline mode with access to the FNRI Philippine food database. You can log meals by typing dishes like "Sinigang na Baboy & rice" or "2 boiled eggs and 1 pandesal".';
   }
 }

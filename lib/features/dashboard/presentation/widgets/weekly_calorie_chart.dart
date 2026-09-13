@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import 'package:eatwise/features/dashboard/providers/weekly_chart_provider.dart';
 import 'package:eatwise/core/constants/app_colors.dart';
 
@@ -14,6 +15,7 @@ class WeeklyCalorieBarChart extends ConsumerWidget {
     final chartAsync = ref.watch(weeklyChartProvider);
     final summaries = chartAsync.valueOrNull ?? [];
     final dates = ref.watch(weekDatesProvider);
+    final offset = ref.watch(hubWeekOffsetProvider);
 
     final data = <_DayBar>[];
     for (final d in dates) {
@@ -40,6 +42,17 @@ class WeeklyCalorieBarChart extends ConsumerWidget {
         ? 0.0
         : loggedVals.reduce((a, b) => a + b) / loggedVals.length;
 
+    final firstDt = dates.isNotEmpty ? DateTime.tryParse(dates.first) : null;
+    final lastDt = dates.isNotEmpty ? DateTime.tryParse(dates.last) : null;
+    final weekLabel = (firstDt != null && lastDt != null)
+        ? (offset == 0
+            ? 'This Week (${DateFormat('MMM d').format(firstDt)} – ${DateFormat('MMM d').format(lastDt)})'
+            : (offset == -1
+                ? 'Last Week (${DateFormat('MMM d').format(firstDt)} – ${DateFormat('MMM d').format(lastDt)})'
+                : '${DateFormat('MMM d').format(firstDt)} – ${DateFormat('MMM d').format(lastDt)}'))
+        : '';
+    final hasAnyData = data.any((d) => d.calories > 0);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -49,12 +62,54 @@ class WeeklyCalorieBarChart extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.bar_chart, size: 20, color: Colors.grey),
+                  const Icon(Icons.bar_chart_rounded, size: 20, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  Text('Weekly Calories', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weekly Calories',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        if (weekLabel.isNotEmpty)
+                          Text(
+                            weekLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                    tooltip: 'Previous week',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => ref.read(hubWeekOffsetProvider.notifier).state--,
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      Icons.chevron_right_rounded,
+                      size: 22,
+                      color: offset >= 0 ? (isDark ? Colors.white24 : Colors.black26) : null,
+                    ),
+                    tooltip: 'Next week',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: offset >= 0
+                        ? null
+                        : () => ref.read(hubWeekOffsetProvider.notifier).state++,
+                  ),
                 ],
               ),
             ),
@@ -63,7 +118,10 @@ class WeeklyCalorieBarChart extends ConsumerWidget {
               height: 180,
               child: chartAsync.isLoading
                   ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                  : BarChart(
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
                         maxY: maxY,
@@ -145,6 +203,41 @@ class WeeklyCalorieBarChart extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    if (!hasAnyData)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xE6111726) : Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade300,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.calendar_today_outlined, size: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                              const SizedBox(width: 8),
+                              Text(
+                                'No meals logged this week',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
             ),
           ],
         ),

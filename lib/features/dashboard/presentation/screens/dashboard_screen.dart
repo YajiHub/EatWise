@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:eatwise/core/database/app_database.dart';
 import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/core/theme/theme_mode_provider.dart';
+import 'package:eatwise/features/dashboard/providers/profile_provider.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/athletic_hero_dial.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/macro_pill_trio.dart';
 import 'package:eatwise/features/dashboard/presentation/widgets/todays_fuel_section.dart';
@@ -16,6 +18,7 @@ import 'package:eatwise/features/dashboard/presentation/widgets/weekly_calorie_c
 import 'package:eatwise/features/dashboard/presentation/widgets/fasting_timer_widget.dart';
 import 'package:eatwise/features/planner/presentation/widgets/planner_summary_card.dart';
 import 'package:eatwise/features/dashboard/providers/dashboard_providers.dart';
+import 'package:eatwise/features/dashboard/providers/stats_provider.dart';
 export 'package:eatwise/features/dashboard/providers/dashboard_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -23,8 +26,8 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedDate = ref.watch(selectedDateProvider);
-    final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyy-MM-dd').format(today);
     final totalsAsync = ref.watch(dailyTotalsProvider(dateStr));
     final consumed = totalsAsync.valueOrNull?['calories'] ?? 0.0;
     final protein = totalsAsync.valueOrNull?['protein'] ?? 0.0;
@@ -39,7 +42,14 @@ class DashboardScreen extends ConsumerWidget {
     final isDark = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
-    final fastingEnabled = ref.watch(fastingEnabledProvider).valueOrNull ?? false;
+    final profile = ref.watch(profileProvider);
+    final userName = profile.name.isNotEmpty
+        ? profile.name
+        : (ref.watch(userNameProvider).valueOrNull ?? '');
+    final avatarUrl = profile.avatarUrl;
+    final statsAsync = ref.watch(statsProvider);
+    final streak = statsAsync.valueOrNull?.currentStreak ?? 0;
+    final showFasting = ref.watch(showFastingOnHubProvider);
 
     return Scaffold(
       extendBody: true,
@@ -52,10 +62,12 @@ class DashboardScreen extends ConsumerWidget {
         child: const Icon(Icons.edit_note_rounded, size: 28),
       ),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(68),
+        preferredSize: const Size.fromHeight(116),
         child: _HomeHeader(
-          userName: ref.watch(userNameProvider).valueOrNull ?? '',
+          userName: userName,
+          avatarUrl: avatarUrl,
           isDark: isDark,
+          streak: streak,
           onToggleTheme: () => ref.read(themeModeProvider.notifier).toggle(),
         ),
       ),
@@ -70,8 +82,7 @@ class DashboardScreen extends ConsumerWidget {
             AthleticHeroDialCard(
               consumed: consumed,
               target: target,
-              fastingLabel: fastingEnabled ? '16:8 Fasting • Active' : 'Target Calorie Budget',
-              fastingProgress: fastingEnabled ? 0.72 : 1.0,
+              fastingLabel: '16:8 Fasting • Active',
               onTap: () => _editCalorieTarget(context, ref),
             ),
 
@@ -149,6 +160,7 @@ class DashboardScreen extends ConsumerWidget {
                 protein: targetProtein - protein,
                 carbs: targetCarbs - carbs,
                 fats: targetFats - fats,
+                consumedCalories: consumed,
               ),
             ),
 
@@ -159,8 +171,8 @@ class DashboardScreen extends ConsumerWidget {
 
             const SizedBox(height: 12),
 
-            // ── Fasting Schedule (if enabled) ──
-            if (fastingEnabled) ...[
+            // ── Fasting Schedule (Hub Integration) ──
+            if (showFasting) ...[
               const FastingTimerWidget(),
               const SizedBox(height: 12),
             ],
@@ -221,12 +233,16 @@ class DashboardScreen extends ConsumerWidget {
 
 class _HomeHeader extends StatelessWidget {
   final String userName;
+  final String? avatarUrl;
   final bool isDark;
+  final int streak;
   final VoidCallback onToggleTheme;
 
   const _HomeHeader({
     required this.userName,
+    this.avatarUrl,
     required this.isDark,
+    required this.streak,
     required this.onToggleTheme,
   });
 
@@ -234,7 +250,7 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
     final greeting =
-        hour < 12 ? 'Magandang Umaga' : hour < 17 ? 'Magandang Hapon' : 'Magandang Gabi';
+        hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     final initials = (userName.isNotEmpty ? userName : 'EatWise')
         .split(' ')
         .where((w) => w.isNotEmpty)
@@ -242,119 +258,163 @@ class _HomeHeader extends StatelessWidget {
         .map((w) => w[0])
         .join()
         .toUpperCase();
-    final nameLine = userName.isNotEmpty ? userName : 'Ka-Fit';
+    final nameLine = userName.isNotEmpty ? userName : 'Athlete';
+    final dateFormatted = DateFormat('EEE, MMM d').format(DateTime.now());
 
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            GestureDetector(
-              onTap: () => context.go('/profile'),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.6),
-                    width: 1.5,
+            // Row 1: Brand & Actions
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: AppColors.primary,
+                    size: 18,
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: 19,
-                  backgroundColor: isDark
-                      ? AppColors.surfaceContainerHigh
-                      : AppColors.primary.withValues(alpha: 0.15),
+                const SizedBox(width: 8),
+                Text(
+                  'EatWise',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.carbs.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(
+                      color: AppColors.carbs.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
                   child: Text(
-                    initials,
+                    '🔥 ${streak}d streak',
                     style: const TextStyle(
-                      color: AppColors.primary,
+                      color: AppColors.carbs,
+                      fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      fontSize: 13,
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'DAILY OVERVIEW',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: AppColors.carbs.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(
-                            color: AppColors.carbs.withValues(alpha: 0.35),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '🔥 7d streak',
-                              style: TextStyle(
-                                color: AppColors.carbs,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                const SizedBox(width: 6),
+                IconButton(
+                  icon: Icon(
+                    isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                    size: 20,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.black54,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$greeting, $nameLine',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      color: isDark ? Colors.white : Colors.black87,
+                  tooltip: isDark ? 'Light mode' : 'Dark mode',
+                  onPressed: onToggleTheme,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => context.push('/profile'),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 17,
+                      backgroundColor: isDark
+                          ? AppColors.surfaceContainerHigh
+                          : AppColors.primary.withValues(alpha: 0.15),
+                      backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+                          ? (avatarUrl!.startsWith('http')
+                              ? NetworkImage(avatarUrl!)
+                              : FileImage(File(avatarUrl!))) as ImageProvider
+                          : null,
+                      child: avatarUrl == null || avatarUrl!.isEmpty
+                          ? Text(
+                              initials,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11.5,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            IconButton(
-              icon: Icon(
-                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                size: 22,
-                color: isDark ? AppColors.textSecondaryDark : Colors.black54,
-              ),
-              tooltip: isDark ? 'Switch to Light' : 'Switch to Dark',
-              onPressed: onToggleTheme,
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.settings_outlined,
-                size: 22,
-                color: isDark ? AppColors.textSecondaryDark : Colors.black54,
-              ),
-              tooltip: 'Settings',
-              onPressed: () => context.push('/settings'),
+            const SizedBox(height: 10),
+
+            // Row 2: Greeting & Date
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DAILY OVERVIEW',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$greeting, $nameLine',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141923) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? const Color(0x18FFFFFF) : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Text(
+                    dateFormatted,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

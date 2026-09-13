@@ -5,26 +5,38 @@ import 'package:eatwise/features/dashboard/providers/calendar_provider.dart';
 import 'package:eatwise/features/dashboard/presentation/screens/dashboard_screen.dart';
 
 class MonthlyCalendarGrid extends ConsumerStatefulWidget {
-  const MonthlyCalendarGrid({super.key});
+  final DateTime selectedDate;
+  final ValueChanged<DateTime>? onSelectDate;
+
+  const MonthlyCalendarGrid({
+    super.key,
+    required this.selectedDate,
+    this.onSelectDate,
+  });
 
   @override
   ConsumerState<MonthlyCalendarGrid> createState() => _MonthlyCalendarGridState();
 }
 
 class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
-  int _displayMonth = 0;
-  int _displayYear = 0;
+  late int _displayMonth;
+  late int _displayYear;
 
   @override
   void initState() {
     super.initState();
-    _syncToSelectedDate();
+    _displayMonth = widget.selectedDate.month;
+    _displayYear = widget.selectedDate.year;
   }
 
-  void _syncToSelectedDate() {
-    final d = ref.read(selectedDateProvider);
-    _displayMonth = d.month;
-    _displayYear = d.year;
+  @override
+  void didUpdateWidget(covariant MonthlyCalendarGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedDate.month != widget.selectedDate.month ||
+        oldWidget.selectedDate.year != widget.selectedDate.year) {
+      _displayMonth = widget.selectedDate.month;
+      _displayYear = widget.selectedDate.year;
+    }
   }
 
   void _prevMonth() {
@@ -53,7 +65,6 @@ class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
   Widget build(BuildContext context) {
     final dayCaloriesAsync = ref.watch(calendarProvider((_displayYear, _displayMonth)));
     final dayCalories = dayCaloriesAsync.valueOrNull ?? <int, double>{};
-    final selectedDate = ref.watch(selectedDateProvider);
     final targetCal = ref.watch(targetCaloriesProvider);
     final today = DateTime.now();
     final monthName = DateFormat('MMMM yyyy').format(DateTime(_displayYear, _displayMonth));
@@ -70,7 +81,9 @@ class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
     for (var day = 1; day <= daysInMonth; day++) {
       final date = DateTime(_displayYear, _displayMonth, day);
       final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
-      final isSelected = date.year == selectedDate.year && date.month == selectedDate.month && date.day == selectedDate.day;
+      final isSelected = date.year == widget.selectedDate.year &&
+          date.month == widget.selectedDate.month &&
+          date.day == widget.selectedDate.day;
       final dayTotal = dayCalories[day];
       final hasLog = dayTotal != null;
       final isOverTarget = hasLog && dayTotal > targetCal;
@@ -78,7 +91,11 @@ class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
 
       cells.add(
         GestureDetector(
-          onTap: isFuture ? null : () => ref.read(selectedDateProvider.notifier).state = date,
+          onTap: isFuture
+              ? null
+              : () {
+                  widget.onSelectDate?.call(date);
+                },
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
@@ -95,8 +112,8 @@ class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
                   '$day',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                    color: isFuture ? Colors.grey.shade400 : null,
+                    fontWeight: isToday ? FontWeight.bold : (isSelected ? FontWeight.bold : FontWeight.normal),
+                    color: isFuture ? Colors.grey.shade400 : (isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : null),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -129,8 +146,12 @@ class _MonthlyCalendarGridState extends ConsumerState<MonthlyCalendarGrid> {
                 IconButton(onPressed: _prevMonth, icon: const Icon(Icons.chevron_left), iconSize: 22),
                 GestureDetector(
                   onTap: () {
-                    ref.read(selectedDateProvider.notifier).state = DateTime.now();
-                    _syncToSelectedDate();
+                    final now = DateTime.now();
+                    setState(() {
+                      _displayMonth = now.month;
+                      _displayYear = now.year;
+                    });
+                    widget.onSelectDate?.call(now);
                   },
                   child: Text(monthName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 ),

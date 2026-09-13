@@ -11,6 +11,7 @@ import 'package:eatwise/features/dashboard/providers/weight_provider.dart';
 import 'package:eatwise/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:eatwise/core/theme/theme_mode_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -91,25 +92,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    // Use image picker to select from camera or gallery
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
+      imageQuality: 88,
       maxWidth: 512,
       maxHeight: 512,
     );
     
     if (pickedFile != null) {
-      setState(() {
-        // Convert XFile to displayable URL/path
-        _avatarUrl = pickedFile.path;
-      });
-      // TODO: Implement image upload to server
-      // For now, show snackbar with file path info
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Avatar selected: ${pickedFile.name}')),
-        );
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final ext = pickedFile.path.contains('.') ? pickedFile.path.split('.').last : 'jpg';
+        final permanentFile = File('${docsDir.path}/profile_avatar_${DateTime.now().millisecondsSinceEpoch}.$ext');
+        await File(pickedFile.path).copy(permanentFile.path);
+
+        setState(() {
+          _avatarUrl = permanentFile.path;
+        });
+
+        ref.read(profileProvider.notifier).update(avatarUrl: permanentFile.path);
+        await ref.read(profileProvider.notifier).save();
+        await AppDatabase.setSetting('profile_avatar_url', permanentFile.path);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile photo updated and saved')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to save avatar: $e')),
+          );
+        }
       }
     }
   }
@@ -125,9 +140,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _weightCtrl.text = latestWeight.weightKg.toStringAsFixed(1);
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.canvasDark : const Color(0xFFF8F9FA),
       extendBody: true,
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        backgroundColor: isDark ? AppColors.canvasDark : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ATHLETE PROFILE',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'METABOLIC METRICS & GOALS',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune_rounded),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 80),
         child: Column(
@@ -612,7 +679,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _appSettingsCard(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
-    final fastingEnabled = ref.watch(fastingEnabledProvider).valueOrNull ?? false;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -633,20 +699,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            secondary: const Icon(Icons.nights_stay_outlined, color: AppColors.fasting),
-            title: const Text('Fasting window'),
-            subtitle: Text(fastingEnabled ? 'Shown on your Home dashboard' : 'Turn on to track your eating window'),
-            value: fastingEnabled,
-            onChanged: (enabled) async {
-              await AppDatabase.setSetting('fasting_enabled', enabled ? 'true' : 'false');
-              ref.invalidate(fastingEnabledProvider);
-            },
-          ),
           ListTile(
             leading: const Icon(Icons.tune_outlined, color: AppColors.primary),
             title: const Text('More preferences'),
-            subtitle: const Text('Fasting schedule and notifications'),
+            subtitle: const Text('Fasting schedule, Hub window & notifications'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings'),
           ),

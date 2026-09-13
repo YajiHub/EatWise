@@ -140,7 +140,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: cs.primary,
           foregroundColor: cs.onPrimary,
-          minimumSize: const Size(double.infinity, 52),
+          minimumSize: const Size(64, 52),
           shape: const RoundedRectangleBorder(borderRadius: _buttonRadius),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2, fontFamily: 'Inter'),
           elevation: 0,
@@ -150,7 +150,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: cs.primaryContainer,
           foregroundColor: cs.onPrimaryContainer,
-          minimumSize: const Size(double.infinity, 52),
+          minimumSize: const Size(64, 52),
           shape: const RoundedRectangleBorder(borderRadius: _buttonRadius),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),
           elevation: 0,
@@ -158,7 +158,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 52),
+          minimumSize: const Size(64, 52),
           shape: const RoundedRectangleBorder(borderRadius: _buttonRadius),
           side: BorderSide(color: cs.outline.withValues(alpha: 0.5)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, fontFamily: 'Inter'),

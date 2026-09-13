@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:eatwise/core/database/app_database.dart';
 
@@ -166,7 +166,9 @@ class ProfileData {
 }
 
 class ProfileNotifier extends StateNotifier<ProfileData> {
-  ProfileNotifier() : super(const ProfileData());
+  ProfileNotifier() : super(const ProfileData()) {
+    load();
+  }
 
   Future<void> load() async {
     final name = await AppDatabase.getSetting('profile_name');

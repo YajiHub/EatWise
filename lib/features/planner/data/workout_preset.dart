@@ -36,3 +36,48 @@ List<Map<String, dynamic>> homeWorkoutPreset(String date) {
     t('Plank', '45-60 seconds'),
   ];
 }
+
+/// Hydration & Protein Prep Preset
+List<Map<String, dynamic>> hydrationProteinPreset(String date) {
+  int o = 0;
+  Map<String, dynamic> t(String title, String subtitle, {String category = 'meal_plan'}) => {
+    'task_date': date,
+    'category': category,
+    'title': title,
+    'subtitle': subtitle,
+    'sort_order': o++,
+    'is_done': 0,
+  };
+
+  return [
+    t('💧 Drink 500ml Water Upon Waking', 'Kickstart hydration & metabolism'),
+    t('🥩 30g Protein Breakfast', 'Eggs, tinapa, or protein shake'),
+    t('🥗 Prep High-Protein Snack', 'Hard-boiled eggs, peanuts, or edamame'),
+    t('💧 Afternoon Hydration Check', 'Reach 1.5L before 3 PM'),
+    t('🚫 Skip Sugary Drinks & Soda', 'Opt for water, calamansi, or green tea'),
+    t('🍗 High Protein Dinner', 'Grilled chicken inasal, fish, or lean pork'),
+    t('💧 Hit 2.5L Daily Water Goal', 'Complete daily hydration target'),
+  ];
+}
+
+/// Filipino Balanced Diet Reset Preset
+List<Map<String, dynamic>> filipinoDietResetPreset(String date) {
+  int o = 0;
+  Map<String, dynamic> t(String title, String subtitle, {String category = 'meal_plan'}) => {
+    'task_date': date,
+    'category': category,
+    'title': title,
+    'subtitle': subtitle,
+    'sort_order': o++,
+    'is_done': 0,
+  };
+
+  return [
+    t('🍚 Measure 1 Cup Rice Portion', 'Keep carb portions controlled & intentional'),
+    t('🥦 Include 1 Fibrous Vegetable Dish', 'Pinakbet, chop suey, or ginisang monggo'),
+    t('🐟 Lean Protein Over Fried Dishes', 'Choose inihaw, sinigang, or nilaga broth'),
+    t('🚶 20-Min Post-Meal Brisk Walk', 'Lower blood glucose spike after lunch'),
+    t('💧 8 Full Glasses of Water', 'Stay hydrated throughout the tropical day'),
+    t('⏰ Close Eating Window by 8 PM', 'Allow 12-14 hours digestion before sleep'),
+  ];
+}

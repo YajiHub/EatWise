@@ -60,8 +60,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final eatUntil = ref.watch(fastingStartTimeProvider); // fast-start = eating ends
     final scheduleLabel = _scheduleLabel(eatFrom, eatUntil);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      backgroundColor: isDark ? AppColors.canvasDark : const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        backgroundColor: isDark ? AppColors.canvasDark : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SYSTEM PREFERENCES',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'AI KEYS • FASTING • NOTIFICATIONS',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       body: _loaded
           ? ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -158,6 +202,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPick: () => _pickTime(isEatUntil: true),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Show Fasting on Hub', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Display fasting countdown card on Hub screen', style: TextStyle(fontSize: 12)),
+              value: ref.watch(showFastingOnHubProvider),
+              onChanged: (v) => ref.read(showFastingOnHubProvider.notifier).toggle(v),
             ),
           ],
         ),

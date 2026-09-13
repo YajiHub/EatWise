@@ -18,15 +18,59 @@ class WeightHistoryScreen extends ConsumerWidget {
     final heightAsync = ref.watch(heightCmProvider);
     final heightCm = heightAsync.valueOrNull;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.canvasDark : const Color(0xFFF8F9FA),
       extendBody: true,
       appBar: AppBar(
-        title: const Text('Weight History'),
+        backgroundColor: isDark ? AppColors.canvasDark : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.show_chart_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'WEIGHT TELEMETRY',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'BODY COMPOSITION TRENDS',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Log Weight',
             onPressed: () => _addWeight(context, ref),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: entriesAsync.isLoading

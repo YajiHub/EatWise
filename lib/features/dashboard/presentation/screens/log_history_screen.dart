@@ -132,16 +132,61 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(logVersionProvider, (_, __) => _load());
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.canvasDark : const Color(0xFFF8F9FA),
       extendBody: true,
       appBar: AppBar(
-        title: const Text('History'),
+        backgroundColor: isDark ? AppColors.canvasDark : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.history_rounded, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LOG HISTORY',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  'DAILY FUEL BREAKDOWN',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: Icon(_showCalendar ? Icons.calendar_view_day : Icons.calendar_month),
+            icon: Icon(_showCalendar ? Icons.calendar_view_day_rounded : Icons.calendar_month_rounded),
             tooltip: _showCalendar ? 'Day view' : 'Calendar view',
             onPressed: () => setState(() => _showCalendar = !_showCalendar),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
@@ -165,10 +210,21 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
               },
             ),
           ] else ...[
-            const MonthlyCalendarGrid(),
+            MonthlyCalendarGrid(
+              selectedDate: _date,
+              onSelectDate: (d) {
+                setState(() => _date = d);
+                _load();
+              },
+            ),
           ],
-          if (!_loading && !_showCalendar) _DailySummaryCard(totals: _totals, logs: _logs),
-          if (!_loading && _showCalendar) const SizedBox(height: 8),
+          if (!_loading)
+            _DailySummaryCard(
+              totals: _totals,
+              logs: _logs,
+              date: _date,
+              compact: _showCalendar,
+            ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -179,7 +235,16 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
                           children: [
                             Icon(Icons.restaurant_menu, size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 12),
-                            Text('No meals logged', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+                            Builder(
+                              builder: (_) {
+                                final now = DateTime.now();
+                                final isToday = _date.year == now.year && _date.month == now.month && _date.day == now.day;
+                                return Text(
+                                  isToday ? 'No meals logged today' : 'No meals logged on ${DateFormat('MMMM d, yyyy').format(_date)}',
+                                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                                );
+                              },
+                            ),
                             const SizedBox(height: 4),
                             const Text('Use Scan or Chat to log food', style: TextStyle(color: Colors.grey)),
                           ],
@@ -190,9 +255,20 @@ class _LogHistoryScreenState extends ConsumerState<LogHistoryScreen> {
                         itemCount: _logs.length + 1,
                         itemBuilder: (_, i) {
                           if (i == 0) {
-                            return const Padding(
-                              padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
-                              child: Text('Meal log', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                            final now = DateTime.now();
+                            final isToday = _date.year == now.year && _date.month == now.month && _date.day == now.day;
+                            final dateTitle = isToday ? 'Meal log' : 'Meal log • ${DateFormat('EEE, MMM d').format(_date)}';
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(dateTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                                  if (_logs.isNotEmpty)
+                                    Text('${_logs.length} ${_logs.length == 1 ? 'entry' : 'entries'}',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
                             );
                           }
                           i -= 1;
@@ -658,8 +734,15 @@ class _DayPicker extends StatelessWidget {
 class _DailySummaryCard extends StatelessWidget {
   final Map<String, double> totals;
   final List<Map<String, dynamic>> logs;
+  final DateTime date;
+  final bool compact;
 
-  const _DailySummaryCard({required this.totals, required this.logs});
+  const _DailySummaryCard({
+    required this.totals,
+    required this.logs,
+    required this.date,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -668,11 +751,14 @@ class _DailySummaryCard extends StatelessWidget {
       final c = (l['total_calories'] as num?)?.toDouble() ?? 0;
       return c > m ? c : m;
     });
+    final today = DateTime.now();
+    final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
+    final dateLabel = isToday ? 'today' : DateFormat('MMM d').format(date);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 10 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -681,17 +767,17 @@ class _DailySummaryCard extends StatelessWidget {
               children: [
                 Text(
                   totalCal.toStringAsFixed(0),
-                  style: const TextStyle(
-                      fontSize: 34,
+                  style: TextStyle(
+                      fontSize: compact ? 26 : 34,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary),
                 ),
                 const SizedBox(width: 6),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('kcal today',
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('kcal $dateLabel',
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey.shade600)),
+                          fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
                 ),
                 const Spacer(),
                 _miniMacro('P', totals['protein'] ?? 0, AppColors.protein),
@@ -701,43 +787,45 @@ class _DailySummaryCard extends StatelessWidget {
                 _miniMacro('F', totals['fats'] ?? 0, AppColors.fats),
               ],
             ),
-            const SizedBox(height: 14),
-            Text('Intake rhythm',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600)),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 56,
-              child: logs.isEmpty
-                  ? Center(
-                      child: Text('No meals logged yet',
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.grey.shade500)))
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: logs.map((l) {
-                        final c =
-                            (l['total_calories'] as num?)?.toDouble() ?? 0;
-                        final h = maxCal > 0 ? (c / maxCal) * 44 : 0.0;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Container(
-                              height: c > 0 ? h.clamp(4.0, 44.0) : 2.0,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(
-                                    alpha: c > 0 ? 0.85 : 0.2),
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(4)),
+            if (!compact) ...[
+              const SizedBox(height: 14),
+              Text('Intake rhythm',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600)),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 56,
+                child: logs.isEmpty
+                    ? Center(
+                        child: Text('No meals logged yet',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade500)))
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: logs.map((l) {
+                          final c =
+                              (l['total_calories'] as num?)?.toDouble() ?? 0;
+                          final h = maxCal > 0 ? (c / maxCal) * 44 : 0.0;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: Container(
+                                height: c > 0 ? h.clamp(4.0, 44.0) : 2.0,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                      alpha: c > 0 ? 0.85 : 0.2),
+                                  borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(4)),
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
           ],
         ),
       ),

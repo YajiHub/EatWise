@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:eatwise/features/planner/domain/planner_task.dart';
 import 'package:eatwise/features/planner/providers/planner_provider.dart';
+import 'package:eatwise/features/planner/data/workout_preset.dart';
 
 class PlannerScreen extends ConsumerStatefulWidget {
   const PlannerScreen({super.key});
-  @override ConsumerState<PlannerScreen> createState() => _PlannerScreenState();
+  @override
+  ConsumerState<PlannerScreen> createState() => _PlannerScreenState();
 }
 
 class _PlannerScreenState extends ConsumerState<PlannerScreen> {
@@ -16,7 +19,8 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   final _addSubCtrl = TextEditingController();
   String _addCategory = 'general';
 
-  @override void dispose() {
+  @override
+  void dispose() {
     _addTitleCtrl.dispose();
     _addSubCtrl.dispose();
     super.dispose();
@@ -28,59 +32,249 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
   Widget build(BuildContext context) {
     final ps = ref.watch(plannerNotifierProvider);
     final tasks = ps.tasks;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily Planner'),
         actions: [
-          IconButton(icon: const Icon(Icons.fitness_center_rounded), tooltip: 'Load workout', onPressed: _confirmLoadWorkout),
-          IconButton(icon: const Icon(Icons.delete_outline_rounded), tooltip: 'Clear all', onPressed: _confirmClear),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome_rounded),
+            tooltip: 'Routine Presets',
+            onPressed: () => _showPresetSelector(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: 'Clear all',
+            onPressed: _confirmClear,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
         onPressed: _showAddDialog,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.black,
         child: const Icon(Icons.add_rounded),
       ),
       body: SafeArea(
-        child: Column(children: [
-          _DateStrip(onSelect: (d) => ref.read(selectedDateProvider.notifier).state = d),
-          const Divider(height: 1),
-          Expanded(
-            child: ps.loading
-                ? const Center(child: CircularProgressIndicator())
-                : tasks.isEmpty
-                    ? _EmptyState(onLoadWorkout: _confirmLoadWorkout, onAdd: _showAddDialog)
-                    : _TaskList(tasks: tasks, onToggle: _onToggle, onDelete: _onDelete),
-          ),
-        ]),
+        child: Column(
+          children: [
+            _DateStrip(onSelect: (d) => ref.read(selectedDateProvider.notifier).state = d),
+            const Divider(height: 1),
+            _QuickHabitBar(
+              onAddHabit: (title, subtitle, category) {
+                HapticFeedback.lightImpact();
+                ref.read(plannerNotifierProvider.notifier).appendQuickHabit(
+                      taskDate: _dateStr,
+                      title: title,
+                      subtitle: subtitle,
+                      category: category,
+                    );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added: $title'),
+                    duration: const Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            if (tasks.isNotEmpty) ...[
+              _ProgressCompletionCard(tasks: tasks, isDark: isDark),
+            ],
+            Expanded(
+              child: ps.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : tasks.isEmpty
+                      ? _EmptyState(
+                          onLoadPreset: () => _showPresetSelector(context),
+                          onAdd: _showAddDialog,
+                        )
+                      : _TaskList(tasks: tasks, onToggle: _onToggle, onDelete: _onDelete),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   void _onToggle(PlannerTask task) {
+    HapticFeedback.selectionClick();
     ref.read(plannerNotifierProvider.notifier).toggle(task.id!, !task.isDone);
   }
 
   void _onDelete(PlannerTask task) {
+    HapticFeedback.mediumImpact();
     ref.read(plannerNotifierProvider.notifier).remove(task.id!);
   }
 
-  void _confirmLoadWorkout() {
-    showDialog(
+  void _showPresetSelector(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Load Home Workout?'),
-        content: const Text('This will add the full 5-block home workout to today.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton.icon(
-            icon: const Icon(Icons.fitness_center),
-            label: const Text('Load Workout'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref.read(plannerNotifierProvider.notifier).loadWorkoutPreset(_dateStr);
-            },
+      backgroundColor: isDark ? const Color(0xFF0F1420) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Load Routine Preset',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Replace today\'s planner with a calibrated routine template:',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _presetOptionTile(
+                icon: Icons.fitness_center_rounded,
+                iconColor: AppColors.protein,
+                title: 'Full Body Home Workout',
+                subtitle: '5-block calisthenics: Warmup, Push, Pull, Legs, Core',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(plannerNotifierProvider.notifier).loadWorkoutPreset(_dateStr);
+                },
+              ),
+              const SizedBox(height: 10),
+              _presetOptionTile(
+                icon: Icons.water_drop_rounded,
+                iconColor: AppColors.carbs,
+                title: 'Hydration & Protein Prep',
+                subtitle: '2.5L water milestones, 30g protein targets, healthy snacks',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(plannerNotifierProvider.notifier).loadCustomPreset(
+                        _dateStr,
+                        hydrationProteinPreset(_dateStr),
+                      );
+                },
+              ),
+              const SizedBox(height: 10),
+              _presetOptionTile(
+                icon: Icons.rice_bowl_rounded,
+                iconColor: AppColors.primary,
+                title: 'Filipino Balanced Diet Reset',
+                subtitle: 'Portioned rice, fibrous vegetables, post-meal walk & broth',
+                isDark: isDark,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(plannerNotifierProvider.notifier).loadCustomPreset(
+                        _dateStr,
+                        filipinoDietResetPreset(_dateStr),
+                      );
+                },
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _presetOptionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141926) : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? const Color(0x18FFFFFF) : Colors.grey.shade300,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? Colors.white38 : Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -148,10 +342,124 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
       ),
     );
   }
-
 }
 
-// ──────────── WIDGETS ────────────
+// ──────────── QUICK HABIT BAR ────────────
+
+class _QuickHabitBar extends StatelessWidget {
+  final void Function(String title, String subtitle, String category) onAddHabit;
+  const _QuickHabitBar({required this.onAddHabit});
+
+  static const _habits = [
+    ('💧 Drink 500ml Water', 'Hydration boost', 'general'),
+    ('🏃 30m Brisk Walk', 'Cardio & blood flow', 'workout'),
+    ('🥩 30g Protein Snack', 'Muscle preservation', 'meal_plan'),
+    ('🧘 10m Stretching', 'Mobility & recovery', 'workout'),
+    ('🚫 Zero Soda Today', 'Sugar control', 'meal_plan'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        itemCount: _habits.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          final h = _habits[i];
+          return ActionChip(
+            label: Text(h.$1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+            avatar: const Icon(Icons.add_circle_outline_rounded, size: 14, color: AppColors.primary),
+            backgroundColor: isDark ? const Color(0xFF131824) : Colors.grey.shade100,
+            side: BorderSide(
+              color: isDark ? const Color(0x22FFFFFF) : Colors.grey.shade300,
+              width: 0.8,
+            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            onPressed: () => onAddHabit(h.$1, h.$2, h.$3),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ──────────── PROGRESS COMPLETION CARD ────────────
+
+class _ProgressCompletionCard extends StatelessWidget {
+  final List<PlannerTask> tasks;
+  final bool isDark;
+  const _ProgressCompletionCard({required this.tasks, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = tasks.length;
+    final done = tasks.where((t) => t.isDone).length;
+    final ratio = total == 0 ? 0.0 : done / total;
+    final percent = (ratio * 100).toInt();
+    final allComplete = total > 0 && done == total;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF101522) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: allComplete
+              ? AppColors.primary.withValues(alpha: 0.5)
+              : (isDark ? const Color(0x18FFFFFF) : Colors.grey.shade200),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                allComplete ? '🔥 ALL TARGETS COMPLETE!' : 'DAILY PROGRESS',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: allComplete ? AppColors.primary : (isDark ? AppColors.textSecondaryDark : Colors.grey.shade600),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$done of $total completed ($percent%)',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: allComplete ? AppColors.primary : (isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: isDark ? const Color(0xFF1B2030) : Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                allComplete ? const Color(0xFF00E676) : AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────── DATE STRIP ────────────
 
 class _DateStrip extends ConsumerWidget {
   final ValueChanged<DateTime> onSelect;
@@ -200,41 +508,70 @@ class _DateStrip extends ConsumerWidget {
   }
 }
 
+// ──────────── EMPTY STATE ────────────
+
 class _EmptyState extends StatelessWidget {
-  final VoidCallback onLoadWorkout;
+  final VoidCallback onLoadPreset;
   final VoidCallback onAdd;
-  const _EmptyState({required this.onLoadWorkout, required this.onAdd});
+  const _EmptyState({required this.onLoadPreset, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: cs.primaryContainer.withValues(alpha: 0.4)),
-            child: Icon(Icons.checklist_rounded, size: 56, color: cs.primary)),
-          const SizedBox(height: 20),
-          Text('No tasks yet', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Text('Plan your meals or load your\nhome workout template.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-          const SizedBox(height: 28),
-          FilledButton.icon(
-            icon: const Icon(Icons.fitness_center_rounded, size: 20),
-            label: const Text('Load Home Workout'),
-            style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-            onPressed: onLoadWorkout,
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.add_rounded, size: 20),
-            label: const Text('Add Custom Task'),
-            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-            onPressed: onAdd,
-          ),
-        ]),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cs.primaryContainer.withValues(alpha: 0.3),
+              ),
+              child: Icon(Icons.checklist_rounded, size: 52, color: cs.primary),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'No tasks planned yet',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap a quick habit chip above, load a routine preset, or create your custom task.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: const Text('Load Routine Preset'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: onLoadPreset,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Add Custom Task'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: onAdd,
+            ),
+          ],
+        ),
       ),
     );
   }

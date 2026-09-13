@@ -30,6 +30,48 @@ class VerifiedFoodBaseline {
 }
 
 const verifiedFoodBaselines = <VerifiedFoodBaseline>[
+  // ═══ BREAKFAST & EGGS ═══
+  VerifiedFoodBaseline(
+    canonicalName: 'Boiled Egg',
+    searchNames: ['boiled egg', 'boiled eggs', 'egg', 'eggs', 'itlog', 'nilagang itlog', 'hard boiled egg', 'soft boiled egg'],
+    category: 'breakfast',
+    calPer100g: 155, proteinPer100g: 12.6, carbsPer100g: 1.1, fatPer100g: 10.6,
+    gramsPerServing: 50, servingDescription: '1 large egg (~50g)',
+    dataSource: 'FNRI',
+  ),
+  VerifiedFoodBaseline(
+    canonicalName: 'Fried Egg (Sunny Side Up)',
+    searchNames: ['fried egg', 'sunny side up', 'sunny side egg', 'pritong itlog', 'sunny-side egg', 'fried eggs'],
+    category: 'breakfast',
+    calPer100g: 196, proteinPer100g: 13.6, carbsPer100g: 0.8, fatPer100g: 15.0,
+    gramsPerServing: 50, servingDescription: '1 egg (~50g)',
+    dataSource: 'FNRI',
+  ),
+  VerifiedFoodBaseline(
+    canonicalName: 'Pandesal',
+    searchNames: ['pandesal', 'pan de sal', 'filipino bread roll', 'pandesal bread'],
+    category: 'breakfast',
+    calPer100g: 290, proteinPer100g: 9.0, carbsPer100g: 56.0, fatPer100g: 3.5,
+    gramsPerServing: 35, servingDescription: '1 piece (~35g)',
+    dataSource: 'FNRI',
+  ),
+  VerifiedFoodBaseline(
+    canonicalName: 'Tapsilog',
+    searchNames: ['tapsilog', 'tapsilog with sunny side egg', 'tapsi meal', 'tapa sinangag itlog', 'beef tapsilog'],
+    category: 'breakfast',
+    calPer100g: 175, proteinPer100g: 8.5, carbsPer100g: 16.5, fatPer100g: 8.0,
+    gramsPerServing: 330, servingDescription: '1 full plate (~330g)',
+    dataSource: 'FNRI',
+  ),
+  VerifiedFoodBaseline(
+    canonicalName: 'Arroz Caldo',
+    searchNames: ['arroz caldo', 'arrozcaldo', 'lugaw with chicken', 'chicken porridge', 'lugaw with egg', 'congee'],
+    category: 'soup',
+    calPer100g: 75, proteinPer100g: 4.0, carbsPer100g: 11.0, fatPer100g: 1.8,
+    gramsPerServing: 300, servingDescription: '1 bowl (~300g)',
+    dataSource: 'FNRI',
+  ),
+
   // ═══ GRAINS & RICE ═══
   VerifiedFoodBaseline(
     canonicalName: 'White Rice (steamed)',

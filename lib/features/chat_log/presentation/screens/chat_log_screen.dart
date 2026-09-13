@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,9 +11,11 @@ import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/core/database/app_database.dart';
 import 'package:eatwise/core/ai/ai_models.dart';
 import 'package:eatwise/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:eatwise/features/dashboard/providers/profile_provider.dart';
+import 'package:eatwise/features/dashboard/providers/stats_provider.dart';
 import 'package:eatwise/features/food_ai/domain/food_item.dart';
 import 'package:eatwise/features/food_ai/presentation/providers/gemini_provider.dart';
-import 'package:eatwise/features/food_ai/presentation/widgets/editable_food_item_card.dart';
 import 'package:eatwise/features/food_ai/presentation/widgets/meal_type_selector.dart';
 
 const _uuid = Uuid();
@@ -415,7 +418,7 @@ class _ChatLogScreenState extends ConsumerState<ChatLogScreen> {
       totalCarbs: items.fold(0.0, (s, f) => s + f.carbsG),
       totalFats: items.fold(0.0, (s, f) => s + f.fatsG),
       summary: msg.mealResult?.summary ?? msg.text,
-      mealType: msg.selectedMealType ?? 'snack',
+      mealType: msg.selectedMealType ?? _inferMealType(),
     );
 
     try {
@@ -442,6 +445,14 @@ class _ChatLogScreenState extends ConsumerState<ChatLogScreen> {
         SnackBar(content: Text('Save failed. Please try again.'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  String _inferMealType() {
+    final hour = DateTime.now().hour;
+    if (hour >= 4 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 15) return 'lunch';
+    if (hour >= 15 && hour < 18) return 'snack';
+    return 'dinner';
   }
 
   void _discardLog(ChatMessage msg) {
@@ -575,56 +586,124 @@ class _ChatLogScreenState extends ConsumerState<ChatLogScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            const Text(
-              'AI Nutrition Coach',
-              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.psychology_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
-            Row(
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary,
-                        blurRadius: 4,
-                        spreadRadius: 0.5,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 5),
                 const Text(
-                  'Active • FNRI Grounded',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    color: AppColors.primary,
-                  ),
+                  'EatWise Coach',
+                  style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      width: 5.5,
+                      height: 5.5,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Active • Nutrition AI',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ],
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final statsAsync = ref.watch(statsProvider);
+              final streak = statsAsync.valueOrNull?.currentStreak ?? 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.carbs.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(9999),
+                  border: Border.all(
+                    color: AppColors.carbs.withValues(alpha: 0.35),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  '🔥 ${streak}d',
+                  style: const TextStyle(
+                    color: AppColors.carbs,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           Consumer(builder: (context, ref, _) {
-            final hasMsgs = ref.watch(chatMessagesProvider).isNotEmpty;
-            return hasMsgs
-                ? IconButton(
-                    icon: const Icon(Icons.refresh_rounded, size: 22),
-                    tooltip: 'New chat',
-                    onPressed: _showClearChatDialog,
-                  )
-                : const SizedBox.shrink();
+            final profile = ref.watch(profileProvider);
+            return GestureDetector(
+              onTap: () => context.push('/profile'),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 15,
+                  backgroundColor: AppColors.surfaceContainerHigh,
+                  backgroundImage: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
+                      ? (profile.avatarUrl!.startsWith('http')
+                          ? NetworkImage(profile.avatarUrl!)
+                          : FileImage(File(profile.avatarUrl!))) as ImageProvider
+                      : null,
+                  child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
+                      ? Text(
+                          (profile.name.isNotEmpty ? profile.name[0] : 'E').toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+            );
           }),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            tooltip: 'New chat',
+            onPressed: _showClearChatDialog,
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
@@ -769,7 +848,7 @@ class _EmptyState extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Kamusta! Meet your AI Nutrition Coach',
+                  'Welcome! Meet your AI Nutrition Coach',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -780,7 +859,7 @@ class _EmptyState extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Log Filipino meals naturally or snap a photo. I estimate exact macros calibrated with FNRI nutritional data.',
+                  'Log Filipino meals naturally or snap a photo. I estimate exact macros calibrated with verified nutritional data.',
                   style: TextStyle(
                     color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
                     fontSize: 13.5,
@@ -1415,7 +1494,7 @@ class _AiBubble extends StatelessWidget {
   }
 }
 
-// ── Meal result card ──
+// ── Compact Meal Result Card (Figma 1:197) ──
 class _MealResultCard extends StatelessWidget {
   final String messageId;
   final MealAnalysis mealResult;
@@ -1441,152 +1520,284 @@ class _MealResultCard extends StatelessWidget {
     this.onDiscard,
   });
 
+  void _showItemEditSheet(BuildContext context, int index, FoodItem item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ItemEditModalSheet(
+        item: item,
+        onSaved: (editedItem) => onItemChanged(index, editedItem),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalCal = currentItems.fold<double>(0, (s, f) => s + f.calories);
     final totalP = currentItems.fold<double>(0, (s, f) => s + f.proteinG);
     final totalC = currentItems.fold<double>(0, (s, f) => s + f.carbsG);
     final totalF = currentItems.fold<double>(0, (s, f) => s + f.fatsG);
-    final hasEdits = mealResult.foods.asMap().entries.any((e) => currentItems[e.key] != e.value);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final primaryName = currentItems.isNotEmpty
+        ? (currentItems.length == 1
+            ? currentItems.first.name
+            : '${currentItems.first.name} & more')
+        : 'Logged Meal';
+    final portionSummary = currentItems
+        .map((f) => f.portionDescription.isNotEmpty
+            ? f.portionDescription
+            : '${f.portionSizeGrams.toStringAsFixed(0)}g')
+        .join(' • ');
+
+    final mealTypeLabel = (selectedMealType ?? 'meal').toUpperCase();
 
     return Container(
       margin: const EdgeInsets.only(left: 4, top: 6),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceCard : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Dish Heading ──
             Row(
               children: [
-                Icon(
-                  approved
-                      ? Icons.check_circle_rounded
-                      : pendingApproval
-                          ? Icons.auto_awesome_rounded
-                          : Icons.receipt_long_rounded,
-                  size: 18,
-                  color: approved ? AppColors.primary : (pendingApproval ? AppColors.primary : Colors.grey),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    approved ? 'Logged to Fuel' : pendingApproval ? 'Review & Log Meal' : 'Meal Analysis',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
-                      color: approved ? AppColors.primary : (isDark ? Colors.white : Colors.black87),
-                    ),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.restaurant_menu_rounded,
+                    color: AppColors.primary,
+                    size: 20,
                   ),
                 ),
-                if (hasEdits)
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        primaryName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (portionSummary.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          portionSummary,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (approved)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.protein.withValues(alpha: 0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      'customized',
+                      'LOGGED',
                       style: TextStyle(
+                        color: AppColors.primary,
                         fontSize: 10,
-                        color: AppColors.protein,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // ── Telemetry Calorie & Macro Banner ──
+            // ── Compact Telemetry Strip (Figma 1:197) ──
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.primary.withValues(alpha: 0.08),
+                color: isDark ? const Color(0xFF090D17) : const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isDark ? AppColors.surfaceCardBorder : AppColors.primary.withValues(alpha: 0.2),
+                  color: isDark ? const Color(0x18FFFFFF) : Colors.grey.shade200,
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.local_fire_department_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${totalCal.toStringAsFixed(0)} kcal',
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: -0.2,
+                  RichText(
+                    text: TextSpan(
+                      text: '${totalCal.toStringAsFixed(0)} ',
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                        letterSpacing: -0.4,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'KCAL',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const Spacer(),
-                  _miniMacro('P', '${totalP.toStringAsFixed(0)}g', AppColors.protein),
-                  const SizedBox(width: 5),
-                  _miniMacro('C', '${totalC.toStringAsFixed(0)}g', AppColors.carbs),
-                  const SizedBox(width: 5),
-                  _miniMacro('F', '${totalF.toStringAsFixed(0)}g', AppColors.fats),
+                  _miniMacro('${totalP.toStringAsFixed(0)}g', 'Pro', AppColors.protein),
+                  _macroDot(isDark),
+                  _miniMacro('${totalC.toStringAsFixed(0)}g', 'Carb', AppColors.carbs),
+                  _macroDot(isDark),
+                  _miniMacro('${totalF.toStringAsFixed(0)}g', 'Fat', AppColors.fats),
                 ],
               ),
             ),
 
+            // ── Compact Itemized List (1 row per ingredient) ──
             if (currentItems.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              Text(
+                'DETECTED INGREDIENTS (TAP TO EDIT)',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.1,
+                  color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 6),
               ...List.generate(currentItems.length, (i) {
-                final vItem = validatedItems != null && i < validatedItems!.length ? validatedItems![i] : null;
-                return EditableFoodItemCard(
-                  key: ValueKey('${messageId}_$i'),
-                  item: currentItems[i],
-                  verificationStatus: vItem?.status == VerificationStatus.verified ? 'verified' : 'estimated',
-                  verificationSource: vItem?.source ?? 'ai',
-                  onChanged: (edited) => onItemChanged(i, edited),
+                final item = currentItems[i];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showItemEditSheet(context, i, item),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Ink(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF141923) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0x14FFFFFF) : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1B202C) : Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${item.portionSizeGrams.toStringAsFixed(0)}g',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${item.calories.toStringAsFixed(0)} cal',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 13,
+                              color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade500,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 );
               }),
             ],
 
+            // ── Approval and Logging Action ──
             if (pendingApproval) ...[
-              const SizedBox(height: 10),
-              MealTypeSelector(selectedMealType: selectedMealType ?? 'snack', onChanged: onMealTypeChanged),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: onDiscard,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Discard', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  OutlinedButton(
+                    onPressed: onDiscard,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      foregroundColor: Colors.redAccent,
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
+                    child: const Text('Discard', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
-                    flex: 2,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -1602,22 +1813,29 @@ class _MealResultCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.25),
+                                color: AppColors.primary.withValues(alpha: 0.28),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
                             ],
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: const Center(
-                            child: Text(
-                              'LOG TO DAILY FUEL',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.4,
-                              ),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.black, size: 16),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'LOG MEAL',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1651,19 +1869,349 @@ class _MealResultCard extends StatelessWidget {
     );
   }
 
-  Widget _miniMacro(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
+  Widget _miniMacro(String value, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _macroDot(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Text(
-        '$label $value',
+        '•',
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: color,
+          color: isDark ? Colors.white24 : Colors.grey.shade400,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Modal Bottom Sheet for Editing Item Grams & Macros ──
+class _ItemEditModalSheet extends StatefulWidget {
+  final FoodItem item;
+  final ValueChanged<FoodItem> onSaved;
+
+  const _ItemEditModalSheet({
+    required this.item,
+    required this.onSaved,
+  });
+
+  @override
+  State<_ItemEditModalSheet> createState() => _ItemEditModalSheetState();
+}
+
+class _ItemEditModalSheetState extends State<_ItemEditModalSheet> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _portionCtrl;
+  late TextEditingController _calCtrl;
+  late TextEditingController _proteinCtrl;
+  late TextEditingController _carbsCtrl;
+  late TextEditingController _fatsCtrl;
+
+  late double _baseGrams;
+  late double _baseCal;
+  late double _baseP;
+  late double _baseC;
+  late double _baseF;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.item.name);
+    _baseGrams = widget.item.portionSizeGrams > 0 ? widget.item.portionSizeGrams : 100;
+    _baseCal = widget.item.calories;
+    _baseP = widget.item.proteinG;
+    _baseC = widget.item.carbsG;
+    _baseF = widget.item.fatsG;
+
+    _portionCtrl = TextEditingController(text: _baseGrams.toStringAsFixed(0));
+    _calCtrl = TextEditingController(text: _baseCal.toStringAsFixed(0));
+    _proteinCtrl = TextEditingController(text: _baseP.toStringAsFixed(1));
+    _carbsCtrl = TextEditingController(text: _baseC.toStringAsFixed(1));
+    _fatsCtrl = TextEditingController(text: _baseF.toStringAsFixed(1));
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _portionCtrl.dispose();
+    _calCtrl.dispose();
+    _proteinCtrl.dispose();
+    _carbsCtrl.dispose();
+    _fatsCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onGramsChanged(double newGrams) {
+    if (newGrams <= 0) return;
+    final ratio = _baseGrams > 0 ? (newGrams / _baseGrams) : 1.0;
+    setState(() {
+      _portionCtrl.text = newGrams.toStringAsFixed(0);
+      _calCtrl.text = (_baseCal * ratio).toStringAsFixed(0);
+      _proteinCtrl.text = (_baseP * ratio).toStringAsFixed(1);
+      _carbsCtrl.text = (_baseC * ratio).toStringAsFixed(1);
+      _fatsCtrl.text = (_baseF * ratio).toStringAsFixed(1);
+    });
+  }
+
+  void _adjustGrams(double delta) {
+    final cur = double.tryParse(_portionCtrl.text) ?? _baseGrams;
+    final updated = math.max(10.0, cur + delta);
+    _onGramsChanged(updated);
+  }
+
+  void _save() {
+    final updated = widget.item.copyWith(
+      name: _nameCtrl.text.trim().isNotEmpty ? _nameCtrl.text.trim() : widget.item.name,
+      portionSizeGrams: double.tryParse(_portionCtrl.text) ?? widget.item.portionSizeGrams,
+      portionDescription: '${_portionCtrl.text}g',
+      calories: double.tryParse(_calCtrl.text) ?? widget.item.calories,
+      proteinG: double.tryParse(_proteinCtrl.text) ?? widget.item.proteinG,
+      carbsG: double.tryParse(_carbsCtrl.text) ?? widget.item.carbsG,
+      fatsG: double.tryParse(_fatsCtrl.text) ?? widget.item.fatsG,
+    );
+    widget.onSaved(updated);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomPad),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F1420) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(
+          color: isDark ? const Color(0x18FFFFFF) : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Title
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Edit Ingredient',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Name Field
+          TextField(
+            controller: _nameCtrl,
+            decoration: InputDecoration(
+              labelText: 'Ingredient Name',
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Portion Grams Stepper
+          Text(
+            'PORTION SIZE (GRAMS)',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
+              color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              _stepperButton(Icons.remove, () => _adjustGrams(-10), isDark),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _portionCtrl,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  decoration: const InputDecoration(
+                    suffixText: 'g',
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onChanged: (val) {
+                    final d = double.tryParse(val);
+                    if (d != null && d > 0) _onGramsChanged(d);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              _stepperButton(Icons.add, () => _adjustGrams(10), isDark),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Quick Preset Chips
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _presetChip('50g', () => _onGramsChanged(50), isDark),
+              _presetChip('100g', () => _onGramsChanged(100), isDark),
+              _presetChip('150g', () => _onGramsChanged(150), isDark),
+              _presetChip('200g', () => _onGramsChanged(200), isDark),
+              _presetChip('+25g', () => _adjustGrams(25), isDark),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Macro Breakdown Grid
+          Row(
+            children: [
+              _macroField('Calories', _calCtrl, AppColors.primary),
+              const SizedBox(width: 8),
+              _macroField('Protein (g)', _proteinCtrl, AppColors.protein),
+              const SizedBox(width: 8),
+              _macroField('Carbs (g)', _carbsCtrl, AppColors.carbs),
+              const SizedBox(width: 8),
+              _macroField('Fats (g)', _fatsCtrl, AppColors.fats),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Save button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _save,
+              borderRadius: BorderRadius.circular(14),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, Color(0xFF00C853)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: const Center(
+                  child: Text(
+                    'UPDATE INGREDIENT',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepperButton(IconData icon, VoidCallback onTap, bool isDark) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1B202C) : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, size: 20, color: isDark ? Colors.white : Colors.black87),
+      ),
+    );
+  }
+
+  Widget _presetChip(String label, VoidCallback onTap, bool isDark) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF181D28) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? const Color(0x18FFFFFF) : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _macroField(String label, TextEditingController ctrl, Color color) {
+    return Expanded(
+      child: TextField(
+        controller: ctrl,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontSize: 9.5, color: color),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

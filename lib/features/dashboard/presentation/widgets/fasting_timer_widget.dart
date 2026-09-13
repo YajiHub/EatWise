@@ -27,6 +27,35 @@ final fastingEndTimeProvider = StateProvider<TimeOfDay>((ref) {
   return TimeOfDay(hour: int.tryParse(s.valueOrNull?['endH'] ?? '12') ?? 12, minute: int.tryParse(s.valueOrNull?['endM'] ?? '0') ?? 0);
 });
 
+final showFastingOnHubProvider = StateNotifierProvider<ShowFastingOnHubNotifier, bool>((ref) {
+  return ShowFastingOnHubNotifier();
+});
+
+class ShowFastingOnHubNotifier extends StateNotifier<bool> {
+  ShowFastingOnHubNotifier() : super(true) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final val = await AppDatabase.getSetting('show_fasting_hub');
+      if (val != null) {
+        state = val == 'true';
+      }
+    } catch (_) {
+      // In unit tests without SQLite initialization, retain default
+    }
+  }
+
+  Future<void> toggle(bool enabled) async {
+    state = enabled;
+    try {
+      await AppDatabase.setSetting('show_fasting_hub', enabled ? 'true' : 'false');
+    } catch (_) {}
+  }
+}
+
+
 /// Compact status-only fasting widget for the dashboard. Schedule editing
 /// lives in the Settings screen to keep the dashboard uncluttered.
 class FastingTimerWidget extends ConsumerStatefulWidget {
@@ -122,96 +151,131 @@ class _FastingTimerWidgetState extends ConsumerState<FastingTimerWidget>
         phaseDurationMin > 0 ? (elapsedMin / phaseDurationMin).clamp(0.0, 1.0) : 0.0;
 
     final phaseLabel = isEating ? 'EATING WINDOW' : 'FASTING';
-    final phaseIcon = isEating ? Icons.restaurant : Icons.nights_stay;
-    final phaseColor = isEating ? AppColors.eating : AppColors.fasting;
+    final phaseIcon = isEating ? Icons.restaurant_rounded : Icons.nights_stay_rounded;
+    final phaseColor = isEating ? AppColors.eating : AppColors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.go('/fasting'),
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(phaseIcon, color: phaseColor, size: 20),
-                    const SizedBox(width: 6),
-                    Text(
-                      phaseLabel,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          letterSpacing: 1.1,
-                          color: phaseColor),
+                    Row(
+                      children: [
+                        Icon(phaseIcon, color: phaseColor, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          phaseLabel,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5,
+                            letterSpacing: 1.1,
+                            color: phaseColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            '$scheduleLabel PROTOCOL',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                      ],
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () => context.push('/settings'),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(scheduleLabel,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.settings,
-                            size: 14, color: AppColors.primary),
-                      ],
-                    ),
+                const SizedBox(height: 12),
+                Text(
+                  _fmt(remaining),
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                    letterSpacing: 2.5,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isEating ? 'until fasting begins' : 'until eating window opens',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(phaseColor),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_fmt(elapsed)} elapsed',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      '${_fmt(total)} total',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              _fmt(remaining),
-              style: const TextStyle(
-                  fontSize: 38,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                  letterSpacing: 3),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              isEating ? 'until fasting begins' : 'until you can eat',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(phaseColor),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('${_fmt(elapsed)} elapsed',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                Text('${_fmt(total)} total',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
