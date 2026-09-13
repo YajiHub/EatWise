@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "EatWise (Debug with .env)",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
+            "name": "EatWise (Profile with .env)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
+            "name": "EatWise (Release with .env)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ]
+        }
+    ]
+}

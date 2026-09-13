@@ -18,24 +18,27 @@ class SecureStorageService {
   static const _groqKey = 'groq_api_key';
   static const _openRouterKey = 'openrouter_api_key';
 
-  /// Initialize secure storage with keys from .env if not already set
+  /// Initialize secure storage with keys from compile-time defines or .env if not already set
   static Future<void> initializeFromEnv() async {
     try {
+      const defineGemini = String.fromEnvironment('GEMINI_API_KEY');
       final currentGemini = await getGeminiApiKey();
-      final gemini = dotenv.env['GEMINI_API_KEY'];
-      if ((currentGemini == null || currentGemini.isEmpty) && gemini != null && gemini.isNotEmpty) {
+      final gemini = defineGemini.isNotEmpty ? defineGemini : (dotenv.env['GEMINI_API_KEY'] ?? '');
+      if ((currentGemini == null || currentGemini.isEmpty) && gemini.isNotEmpty) {
         await setGeminiApiKey(gemini);
       }
 
+      const defineGroq = String.fromEnvironment('GROQ_API_KEY');
       final currentGroq = await getGroqApiKey();
-      final groq = dotenv.env['GROQ_API_KEY'];
-      if ((currentGroq == null || currentGroq.isEmpty) && groq != null && groq.isNotEmpty) {
+      final groq = defineGroq.isNotEmpty ? defineGroq : (dotenv.env['GROQ_API_KEY'] ?? '');
+      if ((currentGroq == null || currentGroq.isEmpty) && groq.isNotEmpty) {
         await setGroqApiKey(groq);
       }
 
+      const defineOpenRouter = String.fromEnvironment('OPENROUTER_API_KEY');
       final currentOpenRouter = await getOpenRouterApiKey();
-      final openRouter = dotenv.env['OPENROUTER_API_KEY'];
-      if ((currentOpenRouter == null || currentOpenRouter.isEmpty) && openRouter != null && openRouter.isNotEmpty) {
+      final openRouter = defineOpenRouter.isNotEmpty ? defineOpenRouter : (dotenv.env['OPENROUTER_API_KEY'] ?? '');
+      if ((currentOpenRouter == null || currentOpenRouter.isEmpty) && openRouter.isNotEmpty) {
         await setOpenRouterApiKey(openRouter);
       }
 

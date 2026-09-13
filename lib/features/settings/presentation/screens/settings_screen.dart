@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:eatwise/core/ai/ai_config.dart';
 import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/core/database/app_database.dart';
 import 'package:eatwise/core/theme/theme_mode_provider.dart';
@@ -64,6 +66,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ? ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
+                _sectionHeader('AI Configuration'),
+                _aiKeysCard(),
+                const SizedBox(height: 16),
                 _sectionHeader('Fasting'),
                 _fastingCard(eatFrom, eatUntil, scheduleLabel),
                 const SizedBox(height: 16),
@@ -387,5 +392,266 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     AppDatabase.setSetting('fasting_start_hour', eatUntil.hour.toString());
     AppDatabase.setSetting('fasting_start_minute', eatUntil.minute.toString());
     AppDatabase.setSetting('fasting_schedule', '');
+  }
+
+  Widget _aiKeysCard() {
+    final hasGemini = AiConfig.geminiApiKey.isNotEmpty;
+    final hasGroq = AiConfig.groqApiKey.isNotEmpty;
+    final hasOpenRouter = AiConfig.openRouterApiKey.isNotEmpty;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.vpn_key_outlined, size: 18, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Engine & API Keys',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Hardware encrypted (Android Keystore / iOS Keychain)',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          _apiKeyTile(
+            title: 'Google Gemini',
+            subtitle: hasGemini ? 'Configured (${_maskKey(AiConfig.geminiApiKey)})' : 'Required for food photo scan & chat',
+            isConfigured: hasGemini,
+            badgeLabel: hasGemini ? 'Active' : 'Missing',
+            badgeColor: hasGemini ? AppColors.primary : Colors.amber.shade800,
+            icon: Icons.auto_awesome,
+            iconColor: AppColors.primary,
+            onTap: () => _showApiKeyDialog(
+              providerName: 'Google Gemini',
+              providerDesc: 'Powers photo food recognition, barcode nutrition insights, and the AI nutrition assistant. Free keys available at aistudio.google.com.',
+              currentKey: AiConfig.geminiApiKey,
+              onSave: (k) async {
+                await AiConfig.setGeminiApiKey(k);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _apiKeyTile(
+            title: 'Groq (Llama 3.3)',
+            subtitle: hasGroq ? 'Configured (${_maskKey(AiConfig.groqApiKey)})' : 'Ultra-fast secondary fallback',
+            isConfigured: hasGroq,
+            badgeLabel: hasGroq ? 'Active' : 'Optional',
+            badgeColor: hasGroq ? AppColors.primary : Colors.grey,
+            icon: Icons.bolt,
+            iconColor: Colors.deepOrange,
+            onTap: () => _showApiKeyDialog(
+              providerName: 'Groq',
+              providerDesc: 'Ultra-low latency LLM inference used as a high-speed fallback if Gemini hits rate limits.',
+              currentKey: AiConfig.groqApiKey,
+              onSave: (k) async {
+                await AiConfig.setGroqApiKey(k);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _apiKeyTile(
+            title: 'OpenRouter',
+            subtitle: hasOpenRouter ? 'Configured (${_maskKey(AiConfig.openRouterApiKey)})' : 'Optional third fallback',
+            isConfigured: hasOpenRouter,
+            badgeLabel: hasOpenRouter ? 'Active' : 'Optional',
+            badgeColor: hasOpenRouter ? AppColors.primary : Colors.grey,
+            icon: Icons.hub_outlined,
+            iconColor: Colors.purple,
+            onTap: () => _showApiKeyDialog(
+              providerName: 'OpenRouter',
+              providerDesc: 'Universal AI router used as an emergency failover provider.',
+              currentKey: AiConfig.openRouterApiKey,
+              onSave: (k) async {
+                await AiConfig.setOpenRouterApiKey(k);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _apiKeyTile({
+    required String title,
+    required String subtitle,
+    required bool isConfigured,
+    required String badgeLabel,
+    required Color badgeColor,
+    required IconData icon,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: iconColor.withValues(alpha: 0.1),
+        child: Icon(icon, size: 18, color: iconColor),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: badgeColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          badgeLabel,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: badgeColor,
+          ),
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _showApiKeyDialog({
+    required String providerName,
+    required String providerDesc,
+    required String currentKey,
+    required Future<void> Function(String) onSave,
+  }) {
+    final controller = TextEditingController(text: currentKey);
+    bool obscure = true;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.vpn_key, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(child: Text('$providerName Key', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                providerDesc,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                obscureText: obscure,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'API Key',
+                  hintText: 'Paste key here',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, size: 20),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                        tooltip: obscure ? 'Show key' : 'Hide key',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.paste, size: 20),
+                        onPressed: () async {
+                          final data = await Clipboard.getData(Clipboard.kTextPlain);
+                          if (data?.text != null && data!.text!.isNotEmpty) {
+                            controller.text = data.text!.trim();
+                          }
+                        },
+                        tooltip: 'Paste from clipboard',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (currentKey.isNotEmpty)
+              TextButton(
+                onPressed: () async {
+                  await onSave('');
+                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(content: Text('$providerName API key removed.')),
+                    );
+                  }
+                },
+                child: const Text('Clear', style: TextStyle(color: Colors.red)),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                final key = controller.text.trim();
+                await onSave(key);
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                if (mounted) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        key.isNotEmpty
+                            ? '$providerName key saved to secure storage.'
+                            : '$providerName key cleared.',
+                      ),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _maskKey(String key) {
+    if (key.isEmpty) return 'Not set';
+    if (key.length <= 8) return '••••••••';
+    return '${key.substring(0, 4)}••••${key.substring(key.length - 4)}';
   }
 }
