@@ -31,7 +31,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _picker = ImagePicker();
   bool _fieldsPopulated = false;
   String? _avatarUrl;
-  XFile? _avatarFile;
 
   @override
   void initState() {
@@ -102,7 +101,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     
     if (pickedFile != null) {
       setState(() {
-        _avatarFile = pickedFile;
         // Convert XFile to displayable URL/path
         _avatarUrl = pickedFile.path;
       });
@@ -481,101 +479,133 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _profileHeader(ProfileData profile) {
     final displayAvatar = _avatarUrl ?? profile.avatarUrl;
     final displayName = _nameCtrl.text.isNotEmpty ? _nameCtrl.text : (profile.name.isNotEmpty ? profile.name : 'Your profile');
-    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _pickAvatar,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.14),
-                  backgroundImage: displayAvatar != null && displayAvatar.isNotEmpty 
-                      ? (displayAvatar.startsWith('http') || displayAvatar.startsWith('https')) ? NetworkImage(displayAvatar) : FileImage(File(displayAvatar)) 
-                      : null,
-                  child: displayAvatar == null || displayAvatar.isEmpty
-                      ? const Icon(Icons.person_rounded, color: AppColors.primary, size: 38)
-                      : null,
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
-                    ),
-                    child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceCard : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 3),
-                Text(
-                  '${profile.age} years · ${profile.heightCm.toStringAsFixed(0)} cm · ${profile.weightKg.toStringAsFixed(1)} kg',
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: profile.bmiColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'BMI: ${profile.bmi.toStringAsFixed(1)} (${profile.bmiCategory})',
-                        style: TextStyle(
-                          fontSize: 11, 
-                          fontWeight: FontWeight.w600, 
-                          color: profile.bmiColor,
-                        ),
-                      ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: _pickAvatar,
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.6), width: 2),
                     ),
-                    if (profile.weightToGoalLabel != null) ...[
-                      const SizedBox(width: 8),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: isDark ? AppColors.surfaceContainerHigh : AppColors.primary.withValues(alpha: 0.15),
+                      backgroundImage: displayAvatar != null && displayAvatar.isNotEmpty 
+                          ? (displayAvatar.startsWith('http') || displayAvatar.startsWith('https')) ? NetworkImage(displayAvatar) : FileImage(File(displayAvatar)) 
+                          : null,
+                      child: displayAvatar == null || displayAvatar.isEmpty
+                          ? const Icon(Icons.person_rounded, color: AppColors.primary, size: 34)
+                          : null,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isDark ? AppColors.surfaceCard : Colors.white, width: 2),
+                      ),
+                      child: const Icon(Icons.camera_alt, size: 12, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${profile.age} yrs • ${profile.heightCm.toStringAsFixed(0)} cm • ${profile.weightKg.toStringAsFixed(1)} kg',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
+                          color: profile.bmiColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: profile.bmiColor.withValues(alpha: 0.4), width: 0.8),
                         ),
                         child: Text(
-                          profile.weightToGoalLabel!,
-                          style: const TextStyle(
-                            fontSize: 11, 
-                            fontWeight: FontWeight.w600, 
-                            color: AppColors.primary,
+                          'BMI: ${profile.bmi.toStringAsFixed(1)} (${profile.bmiCategory})',
+                          style: TextStyle(
+                            fontSize: 10.5, 
+                            fontWeight: FontWeight.w700, 
+                            color: profile.bmiColor,
                           ),
                         ),
                       ),
+                      if (profile.weightToGoalLabel != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 0.8),
+                          ),
+                          child: Text(
+                            profile.weightToGoalLabel!,
+                            style: const TextStyle(
+                              fontSize: 10.5, 
+                              fontWeight: FontWeight.w700, 
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  profile.goal == 'maintain'
-                      ? 'Maintaining your weight'
-                      : profile.goal == 'lose' ? 'Working toward weight loss' : 'Working toward weight gain',
-                  style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -665,7 +695,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ref.read(targetCarbsProvider.notifier).state = carbsG.toDouble();
     ref.read(targetFatsProvider.notifier).state = fatsG.toDouble();
 
-    if (mounted) {
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Targets updated: $cal cal/day')),
       );
