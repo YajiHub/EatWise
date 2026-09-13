@@ -16,6 +16,7 @@ import 'package:eatwise/features/food_ai/domain/food_item.dart';
 import 'package:eatwise/features/food_ai/presentation/providers/gemini_provider.dart';
 import 'package:eatwise/features/food_ai/presentation/widgets/editable_food_item_card.dart';
 import 'package:eatwise/features/food_ai/presentation/widgets/meal_type_selector.dart';
+import 'package:eatwise/features/food_ai/presentation/widgets/scanner_hud_overlay.dart';
 
 class FoodAIScreen extends ConsumerStatefulWidget {
   const FoodAIScreen({super.key});
@@ -549,153 +550,234 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
 
   Widget _buildPreviewArea() {
     if (_capturedImage != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.file(
-              File(_capturedImage!.path),
-              fit: BoxFit.cover,
-              width: 600,
-              height: 300,
-              cacheWidth: 600,
-              cacheHeight: 300,
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        height: 320,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-            if (_isAnalyzing)
-              Container(
-                color: Colors.black38,
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 12),
-                      Text('Analyzing your meal...', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                      SizedBox(height: 4),
-                      Text('MacroAI is estimating the macros', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                    ],
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.file(
+                File(_capturedImage!.path),
+                fit: BoxFit.cover,
+                width: 600,
+                height: 320,
+                cacheWidth: 600,
+                cacheHeight: 320,
+              ),
+              // Corner bracket decoration overlay
+              CustomPaint(
+                painter: _ViewfinderBorderPainter(color: AppColors.primary),
+              ),
+              if (_isAnalyzing)
+                Container(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'ANALYZING FILIPINO MEAL...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Grounding macros with FNRI & local DB',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       );
     }
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      height: 320,
       decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF080C14),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.surfaceCardBorder,
+          width: 1,
+        ),
       ),
-      child: Stack(
-        alignment: Alignment.center,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: ScannerHudOverlay(
+          scanMode: _scanMode,
+          isAnalyzing: _isAnalyzing,
+          onGalleryTap: _pickFromGallery,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          AspectRatio(
-            aspectRatio: 1.0,
+          // Mode Pill Switch
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(9999),
+              border: Border.all(
+                color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade300,
+              ),
+            ),
+            child: Row(
+              children: [
+                _buildModeTab('meal', 'Meal Vision', Icons.restaurant_rounded),
+                _buildModeTab('barcode', 'Barcode', Icons.qr_code_scanner_rounded),
+              ],
+            ),
+          ),
+
+          // Shutter Trigger Button with Emerald Bloom
+          GestureDetector(
+            onTap: _takePhoto,
             child: Container(
-              margin: const EdgeInsets.all(28),
+              width: 68,
+              height: 68,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.85),
-                    width: 2),
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, Color(0xFF00C853)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 24,
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 18,
                     spreadRadius: 2,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-            ),
-          ),
-          Positioned(
-            top: 12,
-            right: 12,
-            child: GestureDetector(
-              onTap: _pickFromGallery,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white24),
+              child: Center(
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black.withValues(alpha: 0.15), width: 2),
+                    color: Colors.black.withValues(alpha: 0.1),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: Colors.black,
+                    size: 28,
+                  ),
                 ),
-                child: const Icon(Icons.photo_library,
-                    color: Colors.white, size: 20),
               ),
             ),
           ),
-          Positioned(
-            bottom: 14,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(16)),
-              child: Text(
-                _scanMode == 'barcode'
-                    ? 'Barcode mode — point at a packaged good'
-                    : 'Align your meal within the frame',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-              ),
+
+          // Gallery Pick Button
+          IconButton.filledTonal(
+            onPressed: _pickFromGallery,
+            style: IconButton.styleFrom(
+              backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.grey.shade200,
+              foregroundColor: isDark ? Colors.white : Colors.black87,
+              padding: const EdgeInsets.all(12),
             ),
+            icon: const Icon(Icons.photo_library_outlined, size: 22),
+            tooltip: 'Choose from Gallery',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(24),
+  Widget _buildModeTab(String mode, String label, IconData icon) {
+    final isSelected = _scanMode == mode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () => setState(() => _scanMode = mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? AppColors.surfaceContainerHigh : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(9999),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: isSelected
+                  ? AppColors.primary
+                  : (isDark ? AppColors.textSecondaryDark : Colors.grey.shade600),
             ),
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                    value: 'meal',
-                    icon: Icon(Icons.restaurant, size: 16),
-                    label: Text('Meal')),
-                ButtonSegment(
-                    value: 'barcode',
-                    icon: Icon(Icons.qr_code, size: 16),
-                    label: Text('Barcode')),
-              ],
-              selected: {_scanMode},
-              onSelectionChanged: (v) => setState(() => _scanMode = v.first),
-              style: const ButtonStyle(
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? (isDark ? Colors.white : Colors.black87)
+                    : (isDark ? AppColors.textSecondaryDark : Colors.grey.shade600),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          GestureDetector(
-            onTap: _takePhoto,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary,
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.5), width: 4),
-              ),
-              child: const Icon(Icons.camera, color: Colors.white, size: 28),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -703,32 +785,49 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
   Widget _buildLoadingIndicator() {
     return const Padding(
       padding: EdgeInsets.all(32),
-      child: Column(children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 16),
-        Text('Analyzing your meal...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-      ]),
+      child: Column(
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 16),
+          Text(
+            'Analyzing meal components...',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildErrorCard() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Card(
-        color: Colors.red.shade50,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 32),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 32),
             const SizedBox(height: 8),
-            Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+            ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: () { setState(() { _error = null; _capturedImage = null; }); },
+              onPressed: () {
+                setState(() {
+                  _error = null;
+                  _capturedImage = null;
+                });
+              },
               child: const Text('Try Again'),
             ),
-          ]),
+          ],
         ),
       ),
     );
@@ -737,60 +836,152 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
   Widget _buildResultCards() {
     final items = _currentItems;
     final hasEdits = _editedItems.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Card(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(children: [
-                const Icon(Icons.analytics_outlined, color: AppColors.secondary, size: 28),
-                const SizedBox(height: 8),
+          // ── Detected Meal Hero Summary Card ──
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceCard : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 18),
+                        SizedBox(width: 6),
+                        Text(
+                          'AI MEAL DETECTION',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(9999),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Text(
+                        '98% MATCH • FNRI GROUNDED',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Text(
                   _result!.summary,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
                 if (hasEdits) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('✏️ Customized — totals recalculated', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.protein.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '✏️ Customized portions — totals recalculated',
+                      style: TextStyle(fontSize: 10.5, color: AppColors.protein, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
-              ]),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Meal Totals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
 
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _totalChip('Calories', _totalCal.toStringAsFixed(0), AppColors.primary),
-                      _totalChip('Protein', '${_totalP.toStringAsFixed(0)}g', AppColors.protein),
-                      _totalChip('Carbs', '${_totalC.toStringAsFixed(0)}g', AppColors.carbs),
-                      _totalChip('Fats', '${_totalF.toStringAsFixed(0)}g', AppColors.fats),
-                    ],
-                  ),
-                ],
+          const SizedBox(height: 10),
+
+          // ── Macro Telemetry Row (Calorie, Protein, Carbs, Fats) ──
+          // Zero overflow guaranteed via 4 Expanded columns with FittedBox
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceCard : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
               ),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            child: Row(
+              children: [
+                _buildMacroTelemetryColumn(
+                  label: 'CALORIES',
+                  value: _totalCal.toStringAsFixed(0),
+                  unit: 'kcal',
+                  color: AppColors.primary,
+                  isDark: isDark,
+                ),
+                _buildMacroDivider(isDark),
+                _buildMacroTelemetryColumn(
+                  label: 'PROTEIN',
+                  value: '${_totalP.toStringAsFixed(0)}g',
+                  unit: 'g',
+                  color: AppColors.protein,
+                  isDark: isDark,
+                ),
+                _buildMacroDivider(isDark),
+                _buildMacroTelemetryColumn(
+                  label: 'CARBS',
+                  value: '${_totalC.toStringAsFixed(0)}g',
+                  unit: 'g',
+                  color: AppColors.carbs,
+                  isDark: isDark,
+                ),
+                _buildMacroDivider(isDark),
+                _buildMacroTelemetryColumn(
+                  label: 'FATS',
+                  value: '${_totalF.toStringAsFixed(0)}g',
+                  unit: 'g',
+                  color: AppColors.fats,
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
+
           const SizedBox(height: 12),
+
+          // ── Itemized Components Breakdown ──
           for (var i = 0; i < items.length; i++) ...[
             EditableFoodItemCard(
               key: ValueKey('scan_item_$i'),
@@ -803,80 +994,196 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
                   : 'ai',
               onChanged: (edited) => _onItemChanged(i, edited),
             ),
+            const SizedBox(height: 8),
           ],
-          const SizedBox(height: 14),
+
+          const SizedBox(height: 6),
+
+          // ── Meal Type Selector ──
           MealTypeSelector(
             selectedMealType: _selectedMealType,
             onChanged: (type) => setState(() => _selectedMealType = type),
           ),
+
           const SizedBox(height: 16),
+
+          // ── Action Buttons ──
           if (_saved)
             OutlinedButton.icon(
               onPressed: _discardResult,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Scan Another Meal'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             )
           else
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _discardResult,
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  label: const Text('Discard', style: TextStyle(color: Colors.red)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: OutlinedButton(
+                    onPressed: _discardResult,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text(
+                      'Discard',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: FilledButton.icon(
-                  onPressed: _isSaving ? null : _approveResult,
-                  icon: _isSaving
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check),
-                  label: Text(_isSaving ? 'Saving...' : 'Approve & Log'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isSaving ? null : _approveResult,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, Color(0xFF00C853)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Center(
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : const Text(
+                                  'LOG TO DAILY FUEL',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
         ],
       ),
     );
   }
 
-  Widget _totalChip(String label, String value, Color color) {
+  Widget _buildMacroTelemetryColumn({
+    required String label,
+    required String value,
+    required String unit,
+    required Color color,
+    required bool isDark,
+  }) {
     return Expanded(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Container(
+            width: 16,
+            height: 3,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               value,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: -0.3,
+              ),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: color,
+            ),
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
+
+  Widget _buildMacroDivider(bool isDark) {
+    return Container(
+      height: 28,
+      width: 1,
+      color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade300,
+    );
+  }
+}
+
+class _ViewfinderBorderPainter extends CustomPainter {
+  final Color color;
+  _ViewfinderBorderPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 2.5;
+    const cornerLength = 22.0;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final w = size.width;
+    final h = size.height;
+    const pad = 12.0;
+
+    // Top-Left
+    canvas.drawLine(const Offset(pad, pad + cornerLength), const Offset(pad, pad), paint);
+    canvas.drawLine(const Offset(pad, pad), const Offset(pad + cornerLength, pad), paint);
+    // Top-Right
+    canvas.drawLine(Offset(w - pad - cornerLength, pad), Offset(w - pad, pad), paint);
+    canvas.drawLine(Offset(w - pad, pad), Offset(w - pad, pad + cornerLength), paint);
+    // Bottom-Left
+    canvas.drawLine(Offset(pad, h - pad - cornerLength), Offset(pad, h - pad), paint);
+    canvas.drawLine(Offset(pad, h - pad), Offset(pad + cornerLength, h - pad), paint);
+    // Bottom-Right
+    canvas.drawLine(Offset(w - pad - cornerLength, h - pad), Offset(w - pad, h - pad), paint);
+    canvas.drawLine(Offset(w - pad, h - pad), Offset(w - pad, h - pad - cornerLength), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ViewfinderBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
