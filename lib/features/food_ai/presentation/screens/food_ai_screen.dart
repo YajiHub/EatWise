@@ -778,12 +778,14 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
                   const Text('Meal Totals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
 
                   const SizedBox(height: 12),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                    _totalChip('Calories', '_totalCal.toStringAsFixed(0)', AppColors.primary),
-                    _totalChip('Protein', '${_totalP.toStringAsFixed(0)}g', AppColors.protein),
-                    _totalChip('Carbs', '${_totalC.toStringAsFixed(0)}g', AppColors.carbs),
-                    _totalChip('Fats', '${_totalF.toStringAsFixed(0)}g', AppColors.fats),
-                  ]),
+                  Row(
+                    children: [
+                      _totalChip('Calories', _totalCal.toStringAsFixed(0), AppColors.primary),
+                      _totalChip('Protein', '${_totalP.toStringAsFixed(0)}g', AppColors.protein),
+                      _totalChip('Carbs', '${_totalC.toStringAsFixed(0)}g', AppColors.carbs),
+                      _totalChip('Fats', '${_totalF.toStringAsFixed(0)}g', AppColors.fats),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -855,10 +857,26 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
   }
 
   Widget _totalChip(String label, String value, Color color) {
-    return Column(children: [
-      Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-      const SizedBox(height: 2),
-      Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-    ]);
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 }

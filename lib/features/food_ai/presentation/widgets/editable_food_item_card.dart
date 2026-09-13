@@ -233,12 +233,12 @@ class _EditableFoodItemCardState extends State<EditableFoodItemCard> {
               ),
             ],
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 _macroBadge('P', '${widget.item.proteinG.toStringAsFixed(1)}g', AppColors.protein),
-                const SizedBox(width: 8),
                 _macroBadge('C', '${widget.item.carbsG.toStringAsFixed(1)}g', AppColors.carbs),
-                const SizedBox(width: 8),
                 _macroBadge('F', '${widget.item.fatsG.toStringAsFixed(1)}g', AppColors.fats),
               ],
             ),
