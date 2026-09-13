@@ -24,12 +24,14 @@ void main() {
 Future<void> _init() async {
   try {
     await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // .env is not packaged in production assets — keys are read from secure storage
+    debugPrint('[Init] Loaded .env file successfully');
+  } catch (e) {
+    debugPrint('[Init] Note: .env not loaded from assets ($e)');
   }
   try {
     await SecureStorageService.initializeFromEnv();
     await AiConfig.loadKeys();
+    debugPrint('[Init] AI Providers status: Gemini=${AiConfig.geminiApiKey.isNotEmpty}, Groq=${AiConfig.groqApiKey.isNotEmpty}, OpenRouter=${AiConfig.openRouterApiKey.isNotEmpty}');
   } catch (e) {
     debugPrint('[Init] Error initializing config: $e');
   }

@@ -5,10 +5,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Service for securely storing sensitive data like API keys
 class SecureStorageService {
   static const _storage = FlutterSecureStorage(
-    aOptions: const AndroidOptions(
+    aOptions: AndroidOptions(
       resetOnError: true,
     ),
-    iOptions: const IOSOptions(
+    iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
   );
@@ -18,18 +18,26 @@ class SecureStorageService {
   static const _groqKey = 'groq_api_key';
   static const _openRouterKey = 'openrouter_api_key';
 
-  /// Initialize secure storage with keys from .env (first run only)
+  /// Initialize secure storage with keys from .env if not already set
   static Future<void> initializeFromEnv() async {
     try {
-      final initialized = await _storage.read(key: 'initialized');
-      if (initialized == 'true') return;
-
+      final currentGemini = await getGeminiApiKey();
       final gemini = dotenv.env['GEMINI_API_KEY'];
-      if (gemini != null && gemini.isNotEmpty) await setGeminiApiKey(gemini);
+      if ((currentGemini == null || currentGemini.isEmpty) && gemini != null && gemini.isNotEmpty) {
+        await setGeminiApiKey(gemini);
+      }
+
+      final currentGroq = await getGroqApiKey();
       final groq = dotenv.env['GROQ_API_KEY'];
-      if (groq != null && groq.isNotEmpty) await setGroqApiKey(groq);
+      if ((currentGroq == null || currentGroq.isEmpty) && groq != null && groq.isNotEmpty) {
+        await setGroqApiKey(groq);
+      }
+
+      final currentOpenRouter = await getOpenRouterApiKey();
       final openRouter = dotenv.env['OPENROUTER_API_KEY'];
-      if (openRouter != null && openRouter.isNotEmpty) await setOpenRouterApiKey(openRouter);
+      if ((currentOpenRouter == null || currentOpenRouter.isEmpty) && openRouter != null && openRouter.isNotEmpty) {
+        await setOpenRouterApiKey(openRouter);
+      }
 
       await _storage.write(key: 'initialized', value: 'true');
       if (kDebugMode) debugPrint('[SecureStorage] Initialized keys from environment');

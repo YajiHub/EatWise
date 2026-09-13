@@ -1,6 +1,6 @@
 # 🍽️ EatWise — AI-Powered Nutrition & Fitness Tracker
 
-> **Smart calorie counting and macro tracking for Filipino cuisine. No food scale needed.**
+> **Smart calorie counting and macro tracking for Filipino cuisine. Use food scale for more accurate results.**
 
 ---
 

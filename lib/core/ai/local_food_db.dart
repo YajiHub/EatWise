@@ -927,13 +927,17 @@ class LocalFoodMatch {
 class LocalFoodDatabase {
   LocalFoodMatch? search(String query) {
     final normalized = query.toLowerCase().trim();
+    if (normalized.length < 3) return null;
 
     // Check branded products first (exact match preferred)
     for (final entry in brandedProductLookup.entries) {
       final product = entry.value;
       // Check for exact or very close brand name match
       for (final name in product.searchNames) {
-        if (normalized.contains(name) || name.contains(normalized)) {
+        final matches = normalized == name ||
+            (normalized.length >= 4 && normalized.contains(name)) ||
+            (name.length >= 4 && normalized.length >= 4 && name.contains(normalized));
+        if (matches) {
           return LocalFoodMatch(
             matchedName: product.productName,
             calPer100g: product.per100ml.cal,

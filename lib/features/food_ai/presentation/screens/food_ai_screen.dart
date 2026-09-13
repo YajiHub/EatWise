@@ -9,8 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:eatwise/core/constants/app_colors.dart';
 import 'package:eatwise/core/database/app_database.dart';
+import 'package:eatwise/core/database/philippine_barcode_db.dart';
 import 'package:eatwise/core/ai/ai_models.dart';
-import 'package:eatwise/core/ai/local_food_db.dart';
 import 'package:eatwise/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:eatwise/features/food_ai/domain/food_item.dart';
 import 'package:eatwise/features/food_ai/presentation/providers/gemini_provider.dart';
@@ -232,8 +232,9 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
     }
 
     final barcode = barcodes.first;
-    final rawValue = barcode.rawValue;
-    if (rawValue == null || rawValue.isEmpty) {
+    final rawValue = barcode.rawValue?.trim() ?? '';
+    // Valid retail barcodes (EAN-8, UPC, EAN-13) are at least 7 characters. Ignore camera artifacts.
+    if (rawValue.length < 7) {
       _barcodeDetected = false;
       return;
     }
@@ -252,28 +253,14 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
       _error = null;
     });
 
-    // 1. Try OpenFoodFacts product API lookup first
-    FoodItem? foodItem = await _lookupOpenFoodFactsBarcode(rawValue);
-    String sourceName = 'OpenFoodFacts';
+    // 1. Check curated Philippine barcode database first (instant offline match)
+    FoodItem? foodItem = PhilippineBarcodeDatabase.lookup(rawValue);
+    String sourceName = 'Local Barcode DB';
 
-    // 2. Fall back to local food database if OFF doesn't have it
+    // 2. If not in local barcode DB, query live OpenFoodFacts API v3
     if (foodItem == null) {
-      final match = LocalFoodDatabase().search(rawValue);
-      if (match != null) {
-        sourceName = match.dataSource;
-        foodItem = FoodItem(
-          name: match.matchedName,
-          nameTagalog: '',
-          portionSizeGrams: match.gramsPerServing ?? 100,
-          portionDescription: match.servingDescription ?? '1 serving',
-          calories: match.calPer100g * ((match.gramsPerServing ?? 100) / 100),
-          proteinG: match.proteinPer100g * ((match.gramsPerServing ?? 100) / 100),
-          carbsG: match.carbsPer100g * ((match.gramsPerServing ?? 100) / 100),
-          fatsG: match.fatPer100g * ((match.gramsPerServing ?? 100) / 100),
-          confidence: match.confidence,
-          reasoning: 'Barcode lookup: ${match.dataSource}',
-        );
-      }
+      foodItem = await _lookupOpenFoodFactsBarcode(rawValue);
+      sourceName = 'OpenFoodFacts v3';
     }
 
     if (!mounted) return;
@@ -334,7 +321,7 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
       );
       final response = await http.get(uri, headers: {
         'User-Agent': 'EatWise/1.0 (contact@eatwise.app)',
-      }).timeout(const Duration(seconds: 6));
+      }).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) return null;
       final data = jsonDecode(response.body) as Map<String, dynamic>;
