@@ -575,13 +575,51 @@ class _ChatLogScreenState extends ConsumerState<ChatLogScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text('Log your meal'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'AI Nutrition Coach',
+              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary,
+                        blurRadius: 4,
+                        spreadRadius: 0.5,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text(
+                  'Active • FNRI Grounded',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           Consumer(builder: (context, ref, _) {
             final hasMsgs = ref.watch(chatMessagesProvider).isNotEmpty;
             return hasMsgs
                 ? IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: const Icon(Icons.refresh_rounded, size: 22),
                     tooltip: 'New chat',
                     onPressed: _showClearChatDialog,
                   )
@@ -639,10 +677,21 @@ class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerPro
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
-          const CircleAvatar(radius: 12, backgroundColor: AppColors.secondary, child: Icon(Icons.auto_awesome, size: 14, color: Colors.white)),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 1),
+            ),
+            child: const CircleAvatar(
+              radius: 12,
+              backgroundColor: Color(0xFF181C24),
+              child: Icon(Icons.auto_awesome, size: 13, color: AppColors.primary),
+            ),
+          ),
           const SizedBox(width: 10),
           AnimatedBuilder(
             animation: _animController,
@@ -658,7 +707,10 @@ class _TypingIndicatorState extends State<_TypingIndicator> with SingleTickerPro
                       opacity: 0.3 + (0.7 * opacity),
                       child: Container(
                         width: 7, height: 7,
-                        decoration: BoxDecoration(color: Colors.grey.shade500, shape: BoxShape.circle),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                   );
@@ -679,55 +731,115 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView(
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
+        SizedBox(height: MediaQuery.of(context).size.height * 0.08),
         Center(
           child: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
-                  child: Icon(Icons.chat_bubble_outline, size: 60, color: AppColors.primary.withValues(alpha: 0.5)),
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        blurRadius: 16,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 36,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text('Log food your way', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
+                const SizedBox(height: 18),
+                Text(
+                  'Kamusta! Meet your AI Nutrition Coach',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                Text('Describe a meal or attach a photo. You can review every item before it is logged.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14), textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                Text('Try: "I ate 2 boiled eggs and a cup of rice"', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                Text(
+                  'Log Filipino meals naturally or snap a photo. I estimate exact macros calibrated with FNRI nutritional data.',
+                  style: TextStyle(
+                    color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+                    fontSize: 13.5,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            'QUICK LOG EXAMPLES',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.0,
+              color: isDark ? AppColors.textSecondaryDark : Colors.grey.shade600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         SizedBox(
-          height: 40,
+          height: 42,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              'I ate 2 boiled eggs and rice',
-              'Had chicken adobo for dinner',
-              'Snacked on banana and turon',
-              '1 cup sinigang and rice',
+              '1 bowl Sinigang na Baboy & 1 cup rice',
+              'Chicken Inasal with sinangag',
+              '2 boiled eggs & 1 pandesal',
+              'Tapsilog with sunny side egg',
+              '1 bowl Arroz Caldo with egg',
             ].map((t) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: ActionChip(
-                avatar: const Icon(Icons.touch_app, size: 14, color: AppColors.primary),
-                label: Text(t, style: const TextStyle(fontSize: 12)),
-                backgroundColor: AppColors.primary.withValues(alpha: 0.05),
-                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+                avatar: const Icon(Icons.flash_on_rounded, size: 14, color: AppColors.primary),
+                label: Text(
+                  t,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.white,
+                side: BorderSide(
+                  color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade300,
+                ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 onPressed: () => onSuggestionTap(t),
               ),
             )).toList(),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 28),
       ],
     );
   }
@@ -1336,11 +1448,24 @@ class _MealResultCard extends StatelessWidget {
     final totalC = currentItems.fold<double>(0, (s, f) => s + f.carbsG);
     final totalF = currentItems.fold<double>(0, (s, f) => s + f.fatsG);
     final hasEdits = mealResult.foods.asMap().entries.any((e) => currentItems[e.key] != e.value);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.only(left: 12),
+    return Container(
+      margin: const EdgeInsets.only(left: 4, top: 6),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceCard : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -1348,43 +1473,85 @@ class _MealResultCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(approved ? Icons.check_circle : pendingApproval ? Icons.rate_review_outlined : Icons.receipt_long,
-                    size: 18, color: approved ? Colors.green : AppColors.primary),
+                Icon(
+                  approved
+                      ? Icons.check_circle_rounded
+                      : pendingApproval
+                          ? Icons.auto_awesome_rounded
+                          : Icons.receipt_long_rounded,
+                  size: 18,
+                  color: approved ? AppColors.primary : (pendingApproval ? AppColors.primary : Colors.grey),
+                ),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(approved ? 'Logged' : pendingApproval ? 'Review Meal' : 'Logged',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: approved ? Colors.green : AppColors.primary)),
+                  child: Text(
+                    approved ? 'Logged to Fuel' : pendingApproval ? 'Review & Log Meal' : 'Meal Analysis',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                      color: approved ? AppColors.primary : (isDark ? Colors.white : Colors.black87),
+                    ),
+                  ),
                 ),
                 if (hasEdits)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('edited', style: TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600)),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.protein.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'customized',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.protein,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 10),
+
+            // ── Telemetry Calorie & Macro Banner ──
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? AppColors.surfaceCardBorder : AppColors.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_fire_department_outlined, size: 18, color: AppColors.primary),
+                  const Icon(
+                    Icons.local_fire_department_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 6),
-                  Text('${totalCal.toStringAsFixed(0)} kcal', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  Text(
+                    '${totalCal.toStringAsFixed(0)} kcal',
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
                   const Spacer(),
                   _miniMacro('P', '${totalP.toStringAsFixed(0)}g', AppColors.protein),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   _miniMacro('C', '${totalC.toStringAsFixed(0)}g', AppColors.carbs),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   _miniMacro('F', '${totalF.toStringAsFixed(0)}g', AppColors.fats),
                 ],
               ),
             ),
+
             if (currentItems.isNotEmpty) ...[
               const SizedBox(height: 10),
               ...List.generate(currentItems.length, (i) {
@@ -1398,6 +1565,7 @@ class _MealResultCard extends StatelessWidget {
                 );
               }),
             ],
+
             if (pendingApproval) ...[
               const SizedBox(height: 10),
               MealTypeSelector(selectedMealType: selectedMealType ?? 'snack', onChanged: onMealTypeChanged),
@@ -1405,36 +1573,75 @@ class _MealResultCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
+                    child: OutlinedButton(
                       onPressed: onDiscard,
-                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                      label: const Text('Discard', style: TextStyle(fontSize: 13, color: Colors.red)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red, side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        foregroundColor: Colors.redAccent,
+                        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
+                      child: const Text('Discard', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: onApprove,
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Approve & Log', style: TextStyle(fontSize: 13)),
-                      style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: onApprove,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, Color(0xFF00C853)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: const Center(
+                            child: Text(
+                              'LOG TO DAILY FUEL',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ],
+
             if (approved) ...[
               const SizedBox(height: 8),
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.check_circle, size: 14, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text('Saved to your log', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
+                  SizedBox(width: 5),
+                  Text(
+                    'Logged to Daily Fuel timeline',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -1446,9 +1653,19 @@ class _MealResultCard extends StatelessWidget {
 
   Widget _miniMacro(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-      child: Text('$label $value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$label $value',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
     );
   }
 }
