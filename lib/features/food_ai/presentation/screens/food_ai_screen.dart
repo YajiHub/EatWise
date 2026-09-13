@@ -327,14 +327,23 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
 
   Future<FoodItem?> _lookupOpenFoodFactsBarcode(String barcode) async {
     try {
-      final uri = Uri.parse('https://world.openfoodfacts.org/api/v2/product/$barcode.json');
+      // OpenFoodFacts API v3 endpoint with field filtering for minimal network payload
+      final uri = Uri.parse(
+        'https://world.openfoodfacts.org/api/v3/product/$barcode.json'
+        '?fields=product_name,product_name_en,generic_name,nutriments,serving_size,serving_quantity',
+      );
       final response = await http.get(uri, headers: {
         'User-Agent': 'EatWise/1.0 (contact@eatwise.app)',
       }).timeout(const Duration(seconds: 6));
 
       if (response.statusCode != 200) return null;
-      final data = jsonDecode(response.body);
-      if (data['status'] != 1) return null;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // v3 uses 'status': 'success' and 'result.id': 'product_found' (v2 used 'status': 1)
+      final status = data['status'];
+      final resultId = data['result'] is Map ? data['result']['id'] : null;
+      final isFound = status == 'success' || status == 1 || resultId == 'product_found';
+      if (!isFound) return null;
 
       final product = data['product'] as Map<String, dynamic>?;
       if (product == null) return null;
@@ -381,7 +390,7 @@ class _FoodAIScreenState extends ConsumerState<FoodAIScreen> {
         carbsG: double.parse(cServing.toStringAsFixed(1)),
         fatsG: double.parse(fServing.toStringAsFixed(1)),
         confidence: 0.95,
-        reasoning: 'Barcode lookup: OpenFoodFacts ($barcode)',
+        reasoning: 'Barcode lookup: OpenFoodFacts v3 ($barcode)',
       );
     } catch (e) {
       debugPrint('[BarcodeLookup] OpenFoodFacts error: $e');
