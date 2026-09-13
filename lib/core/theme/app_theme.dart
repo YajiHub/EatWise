@@ -41,28 +41,32 @@ class AppTheme {
   static ThemeData get darkTheme {
     final cs = ColorScheme(
       brightness: Brightness.dark,
-      primary: const Color(0xFF4FE584),
-      onPrimary: const Color(0xFF003318),
-      primaryContainer: const Color(0xFF005322),
-      onPrimaryContainer: const Color(0xFFB8F0CB),
-      secondary: const Color(0xFF4FCAC4),
-      onSecondary: const Color(0xFF00201E),
-      secondaryContainer: const Color(0xFF0A3D38),
-      onSecondaryContainer: const Color(0xFFB4EDE9),
-      tertiary: const Color(0xFFF0B450),
-      onTertiary: const Color(0xFF442B00),
-      tertiaryContainer: const Color(0xFF5C4300),
-      onTertiaryContainer: const Color(0xFFFCE4B6),
+      primary: AppColors.primary,
+      onPrimary: AppColors.onPrimaryDark,
+      primaryContainer: const Color(0xFF006D35),
+      onPrimaryContainer: AppColors.primaryLight,
+      secondary: AppColors.secondary,
+      onSecondary: const Color(0xFF002E6A),
+      secondaryContainer: const Color(0xFF0566D9),
+      onSecondaryContainer: const Color(0xFFE6ECFF),
+      tertiary: AppColors.tertiary,
+      onTertiary: const Color(0xFF552100),
+      tertiaryContainer: const Color(0xFF8D3B00),
+      onTertiaryContainer: const Color(0xFFFFB995),
       error: const Color(0xFFFFB4AB),
       onError: const Color(0xFF690005),
       errorContainer: const Color(0xFF93000A),
       onErrorContainer: const Color(0xFFFFDAD6),
-      surface: const Color(0xFF0B1326),
-      onSurface: const Color(0xFFE8EDF5),
-      surfaceContainerHighest: const Color(0xFF131C32),
-      onSurfaceVariant: const Color(0xFF9BA6BC),
-      outline: const Color(0xFF8493AC),
-      outlineVariant: const Color(0xFF2A3550),
+      surface: AppColors.surfaceDark,
+      onSurface: AppColors.textPrimaryDark,
+      surfaceContainerLowest: AppColors.canvasDark,
+      surfaceContainerLow: AppColors.surfaceCard,
+      surfaceContainer: AppColors.surfaceContainerDark,
+      surfaceContainerHigh: AppColors.surfaceContainerHigh,
+      surfaceContainerHighest: AppColors.surfaceContainerHighest,
+      onSurfaceVariant: AppColors.textSecondaryDark,
+      outline: const Color(0xFF859585),
+      outlineVariant: const Color(0xFF3B4A3D),
     );
     return _build(cs);
   }
@@ -74,7 +78,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: cs,
       brightness: cs.brightness,
-      scaffoldBackgroundColor: cs.surface,
+      scaffoldBackgroundColor: isDark ? AppColors.canvasDark : cs.surface,
 
       textTheme: GoogleFonts.interTextTheme(_textTheme(isDark)),
       fontFamily: GoogleFonts.inter().fontFamily,
@@ -83,7 +87,7 @@ class AppTheme {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 1,
-        backgroundColor: cs.surface,
+        backgroundColor: isDark ? AppColors.canvasDark : cs.surface,
         foregroundColor: cs.onSurface,
         iconTheme: IconThemeData(color: cs.onSurface, size: 22),
         titleTextStyle: GoogleFonts.inter(
@@ -97,32 +101,38 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: 68,
-        backgroundColor: cs.surface,
+        backgroundColor: isDark ? AppColors.surfaceDark : cs.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: cs.primaryContainer,
+        indicatorColor: isDark ? AppColors.primary.withValues(alpha: 0.15) : cs.primaryContainer,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
             fontSize: 11,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             fontFamily: 'Inter',
+            color: selected ? (isDark ? AppColors.primary : cs.primary) : cs.onSurfaceVariant,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             size: selected ? 26 : 22,
-            color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+            color: selected ? (isDark ? AppColors.primary : cs.primary) : cs.onSurfaceVariant,
           );
         }),
       ),
 
       cardTheme: CardThemeData(
         elevation: 0,
-        color: isDark ? cs.surfaceContainerHighest : cs.surface,
+        color: isDark ? AppColors.surfaceCard : cs.surface,
         surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
-        shape: const RoundedRectangleBorder(borderRadius: _cardRadius),
+        shadowColor: Colors.black.withValues(alpha: 0.15),
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+          side: isDark
+              ? const BorderSide(color: AppColors.surfaceCardBorder, width: 1)
+              : BorderSide.none,
+        ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
 

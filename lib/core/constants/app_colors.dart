@@ -3,40 +3,56 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary — Emerald Green (brand)
-  static const primary = Color(0xFF1DB954);
-  static const primaryLight = Color(0xFF2FE574);
-  static const primaryDark = Color(0xFF159C42);
+  // Primary — Electric Emerald (brand & metabolic target)
+  static const primary = Color(0xFF00E676);
+  static const primaryLight = Color(0xFF75FF9E);
+  static const primaryDark = Color(0xFF006D35);
+  static const primaryGlow = Color(0x5900E676); // 35% glow bloom
 
   // Primary adaptations for inverted backgrounds
   static const onPrimaryLight = Color(0xFFFFFFFF);
-  static const onPrimaryDark = Color(0xFF003318);
+  static const onPrimaryDark = Color(0xFF003918);
 
-  // Secondary — Teal (companion to emerald)
-  static const secondary = Color(0xFF0D9488);
-  static const secondaryLight = Color(0xFF14B8A6);
-  static const secondaryDark = Color(0xFF0F766E);
+  // Secondary — Cobalt / Athletic Blue
+  static const secondary = Color(0xFF3B82F6);
+  static const secondaryLight = Color(0xFFADC6FF);
+  static const secondaryDark = Color(0xFF0566D9);
 
-  // Tertiary — Amber (energy)
-  static const tertiary = Color(0xFFD97706);
-  static const tertiaryLight = Color(0xFFF59E0B);
+  // Tertiary — Flame Orange / Energy
+  static const tertiary = Color(0xFFF97316);
+  static const tertiaryLight = Color(0xFFFFB995);
 
-  // Neutrals
+  // Neutrals — Athletic Obsidian System
+  static const canvasDark = Color(0xFF080C14);
   static const backgroundLight = Color(0xFFF6FAFF);
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const surfaceDark = Color(0xFF0B1326);
-  static const surfaceContainerDark = Color(0xFF131C32);
+  static const surfaceDark = Color(0xFF0F131C);
+  static const surfaceCard = Color(0xFF181C24);
+  static const surfaceContainerDark = Color(0xFF1C2028);
+  static const surfaceContainerHigh = Color(0xFF262A33);
+  static const surfaceContainerHighest = Color(0xFF31353E);
+
+  // 1px Precision Ghost Borders
+  static const surfaceCardBorder = Color(0x14FFFFFF); // 8% white
+  static const surfaceCardBorderActive = Color(0x33FFFFFF); // 20% white
+
+  // Text
   static const textPrimaryLight = Color(0xFF0B1326);
   static const textSecondaryLight = Color(0xFF5A6578);
-  static const textPrimaryDark = Color(0xFFE8EDF5);
-  static const textSecondaryDark = Color(0xFF9BA6BC);
+  static const textPrimaryDark = Color(0xFFDFE2EE);
+  static const textSecondaryDark = Color(0xFFBACBB9);
+  static const textMutedDark = Color(0xFF64748B);
 
-  // Macro colors — vibrant, high-contrast for charts
-  static const protein = Color(0xFF3B82F6); // Blue
-  static const carbs = Color(0xFFF97316); // Orange
-  static const fats = Color(0xFFEAB308); // Yellow
+  // Macro colors — athletic telemetry
+  static const protein = Color(0xFF3B82F6); // Electric Cobalt
+  static const proteinLight = Color(0xFFADC6FF);
+  static const carbs = Color(0xFFF97316); // Sunset Flame
+  static const carbsLight = Color(0xFFFFB995);
+  static const fats = Color(0xFFFACC15); // Solar Amber
+  static const fatsLight = Color(0xFFFFDECF);
 
-  // Fasting — softer, readable in both modes
-  static const fasting = Color(0xFF6366F1);
+  // Fasting — circadian telemetry
+  static const fasting = Color(0xFF818CF8); // Indigo Moon
+  static const fastingGlow = Color(0x33818CF8);
   static const eating = Color(0xFFF59E0B);
 }
