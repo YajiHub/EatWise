@@ -13,17 +13,6 @@
 
 EatWise integrates a **4-tier multi-provider AI engine** paired with a **local Philippine Food and Nutrition Research Institute (FNRI) SQLite database**, allowing users to log meals through multimodal photo scans, barcodes, conversational AI, or rapid manual entry—with guaranteed offline uptime.
 
----
-
-## 📸 App Interface
-
-| Hub & Daily Telemetry | AI Meal Logging | History & Calendar | Profile & Targets |
-| :---: | :---: | :---: | :---: |
-| <img src="assets/images/app_logo.png" width="200" /> | <img src="assets/images/log-meal.png" width="200" /> | <img src="assets/images/history.png" width="200" /> | <img src="assets/images/profile-and-insights.png" width="200" /> |
-| Concentric dial & fasting window | Multi-provider AI & manual log | Calendar & weekly trends | Mifflin-St Jeor BMR/TDEE targets |
-
----
-
 ## ⚡ Key Engineering Highlights
 
 ### 1. 4-Tier Resilient AI Fallback Architecture
