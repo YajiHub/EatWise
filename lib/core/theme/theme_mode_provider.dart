@@ -25,8 +25,10 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 
   /// Flip between light and dark. System resolves to whichever is active,
   /// so toggling always lands on the opposite brightness of what's shown.
-  Future<void> toggle() async {
-    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  Future<void> toggle([Brightness? currentBrightness]) async {
+    final isCurrentlyDark = state == ThemeMode.dark ||
+        (state == ThemeMode.system && currentBrightness == Brightness.dark);
+    final next = isCurrentlyDark ? ThemeMode.light : ThemeMode.dark;
     await set(next);
   }
 }

@@ -38,6 +38,29 @@ class RemainingMacros {
   int get hashCode => cacheKey.hashCode;
 }
 
+/// Smart offline / fallback macro recommendation engine tailored to Filipino snacks.
+String _smartLocalMacroInsight(int cal, int p, int c, int f, int hour) {
+  if (cal <= 0) {
+    return 'Daily calorie ceiling reached (${cal.abs()} kcal over). Stay hydrated with cold sparkling water, calamansi infusion, or green tea.';
+  }
+
+  // Check which macro has the highest proportional need
+  if (p >= 25 && p >= c / 2) {
+    return 'Protein is your priority ($p g left). Best snacks: 2 boiled eggs (~14g P), a 95g can of Century Tuna in water (~19g P), or grilled chicken breast strips.';
+  }
+  if (c >= 45) {
+    return 'Refuel your carbs ($c g left). Clean options: 1 boiled saba banana (~28g C), half a cup of warm oatmeal, or fresh papaya slices.';
+  }
+  if (f >= 15) {
+    return 'Healthy fats needed ($f g left). Grab a small handful of roasted peanuts (mani) or half an avocado with a pinch of salt.';
+  }
+  if (cal <= 180) {
+    return 'Pacing tight ($cal kcal left). Opt for low-calorie options: chilled cucumber slices with vinegar, clear nilaga broth, or unsweetened iced tea.';
+  }
+
+  return 'Balanced pacing! For your next bite, try Greek yogurt with sliced mango or 1 boiled egg with a small slice of whole wheat bread.';
+}
+
 /// Fetches a short AI snack suggestion based on the user's remaining macros.
 /// Falls back gracefully if all AI providers are unavailable.
 final dailyInsightProvider =
@@ -46,10 +69,17 @@ final dailyInsightProvider =
   final p = macros.protein.round();
   final c = macros.carbs.round();
   final f = macros.fats.round();
+  final hour = DateTime.now().hour;
 
   // Zero-eaten guard: User hasn't logged anything today yet
   if (macros.consumedCalories <= 0) {
-    return 'No meals logged yet today. Kick off your day with a protein-rich meal (such as eggs, chicken inasal, or greek yogurt) to pace your ${cal > 0 ? "$cal kcal" : "daily"} target.';
+    if (hour < 11) {
+      return 'No meals logged yet today. Kick off your morning with protein (such as 2 boiled eggs & pandesal or Greek yogurt) to pace your ${cal > 0 ? "$cal kcal" : "daily"} target.';
+    } else if (hour < 16) {
+      return 'No meals logged yet today. Anchor your afternoon with a balanced Filipino lunch like grilled chicken inasal or fish with rice to fuel your day.';
+    } else {
+      return 'No meals logged yet today. Fuel your evening with a high-protein, nutrient-dense dinner to make steady progress toward your ${cal > 0 ? "$cal kcal" : "daily"} target.';
+    }
   }
 
   final service = ref.watch(askAiServiceProvider);
@@ -69,16 +99,15 @@ final dailyInsightProvider =
     ..writeln('Provide a concise, encouraging 1-sentence opening mentioning their macro balance, followed by the snack recommendations.');
 
   try {
-    final result = await service.sendMessage(prompt.toString());
-    return result.text.trim();
+    final result = await service.sendMessage(prompt.toString(), saveToHistory: false);
+    final text = result.text.trim();
+    if (text.isEmpty ||
+        text.contains('tracked on your Hub screen') ||
+        text.contains('offline mode with access to the FNRI')) {
+      return _smartLocalMacroInsight(cal, p, c, f, hour);
+    }
+    return text;
   } catch (_) {
-    // Graceful, rule-based fallback — no AI required.
-    if (cal <= 0) {
-      return 'You have reached your daily calorie goal. Consider herbal tea or sparkling water if you feel hungry.';
-    }
-    if (p > 0 && p <= c && p <= f) {
-      return 'Low on protein? Try Greek yogurt with berries, a hard-boiled egg, or a tuna scoop — quick and protein-dense.';
-    }
-    return 'A banana with peanut butter or a small handful of trail mix fits your remaining macros nicely.';
+    return _smartLocalMacroInsight(cal, p, c, f, hour);
   }
 });

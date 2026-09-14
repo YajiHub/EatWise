@@ -8,14 +8,18 @@ class AthleticHeroDialCard extends StatelessWidget {
   final double consumed;
   final double target;
   final String fastingLabel;
+  final bool showFasting;
   final VoidCallback onTap;
+  final VoidCallback? onFastingTap;
 
   const AthleticHeroDialCard({
     super.key,
     required this.consumed,
     required this.target,
     this.fastingLabel = '16:8 Fasting • Active',
+    this.showFasting = true,
     required this.onTap,
+    this.onFastingTap,
   });
 
   @override
@@ -28,212 +32,236 @@ class AthleticHeroDialCard extends StatelessWidget {
         : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.surfaceCardBorder : Colors.grey.shade200,
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Ambient Radial Emerald Bloom (Dark Mode Only)
-            if (isDark)
-              Positioned(
-                top: -40,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.14),
-                        Colors.transparent,
-                      ],
-                    ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Ambient Radial Emerald Bloom (Dark Mode Only)
+          if (isDark)
+            Positioned(
+              top: -40,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.14),
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
+            ),
 
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              child: Column(
-                children: [
-                  // ── Top Header Row ──
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              children: [
+                // ── Calorie Target Tap Area (Header + Dial) ──
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTap,
+                  child: Column(
                     children: [
-                      Text(
-                        'DAILY CALORIE TARGET',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : Colors.grey.shade600,
-                        ),
+                      // ── Top Header Row ──
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'DAILY CALORIE TARGET',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                  color: isDark
+                                      ? AppColors.textSecondaryDark
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 12,
+                                color: isDark
+                                    ? AppColors.textSecondaryDark
+                                    : Colors.grey.shade500,
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isOver
+                                  ? Colors.red.withValues(alpha: 0.15)
+                                  : AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(9999),
+                              border: Border.all(
+                                color: isOver
+                                    ? Colors.red.withValues(alpha: 0.3)
+                                    : AppColors.primary.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Text(
+                              isOver ? 'Over Budget' : 'On Track',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                                color: isOver ? Colors.red : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isOver
-                              ? Colors.red.withValues(alpha: 0.15)
-                              : AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(
-                            color: isOver
-                                ? Colors.red.withValues(alpha: 0.3)
-                                : AppColors.primary.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Text(
-                          isOver ? 'Over Budget' : 'On Track',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                            color: isOver ? Colors.red : AppColors.primary,
-                          ),
+
+                      const SizedBox(height: 12),
+
+                      // ── Progress Dial ──
+                      SizedBox(
+                        width: 210,
+                        height: 210,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CustomPaint(
+                              size: const Size(210, 210),
+                              painter: _AthleticDialPainter(
+                                remainingRatio: remainingRatio,
+                                isDark: isDark,
+                                isOver: isOver,
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  remaining.abs().toStringAsFixed(0),
+                                  style: TextStyle(
+                                    fontSize: 38,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -1.0,
+                                    color: isOver
+                                        ? Colors.red
+                                        : (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A)),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isOver ? 'KCAL OVER' : 'KCAL REMAINING',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.0,
+                                    color: isDark
+                                        ? AppColors.textSecondaryDark
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${consumed.toStringAsFixed(0)} eaten of ${target.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? AppColors.primaryLight
+                                        : AppColors.primaryDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
+                ),
 
-                  const SizedBox(height: 12),
-
-                  // ── Progress Dial ──
-                  SizedBox(
-                    width: 210,
-                    height: 210,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(210, 210),
-                          painter: _AthleticDialPainter(
-                            remainingRatio: remainingRatio,
-                            isDark: isDark,
-                            isOver: isOver,
+                // ── Bottom Fasting Capsule (Separate Click Target) ──
+                if (showFasting) ...[
+                  const SizedBox(height: 14),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onFastingTap,
+                      borderRadius: BorderRadius.circular(9999),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.surfaceCard
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.surfaceCardBorder
+                                : Colors.grey.shade300,
                           ),
                         ),
-
-                        // Center Readout
-                        Column(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              remaining.abs().toStringAsFixed(0),
-                              style: TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1.0,
-                                height: 1.0,
-                                color: isOver
-                                    ? Colors.redAccent
-                                    : (isDark
-                                        ? AppColors.textPrimaryDark
-                                        : const Color(0xFF0F172A)),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.fasting,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(width: 6),
                             Text(
-                              isOver ? 'KCAL OVER' : 'KCAL REMAINING',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.0,
-                                color: isDark
-                                    ? AppColors.textSecondaryDark
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${consumed.toStringAsFixed(0)} eaten of ${target.toStringAsFixed(0)}',
+                              fastingLabel,
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                                 color: isDark
-                                    ? AppColors.primaryLight
-                                    : AppColors.primaryDark,
+                                    ? AppColors.textPrimaryDark
+                                    : const Color(0xFF1E293B),
                               ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 11,
+                              color: isDark
+                                  ? AppColors.textSecondaryDark
+                                  : Colors.grey,
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // ── Bottom Fasting Capsule ──
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.surfaceCard
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(
-                        color: isDark
-                            ? AppColors.surfaceCardBorder
-                            : Colors.grey.shade300,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.fasting,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          fastingLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppColors.textPrimaryDark
-                                : const Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 11,
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : Colors.grey,
-                        ),
-                      ],
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

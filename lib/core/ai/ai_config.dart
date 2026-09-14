@@ -92,12 +92,12 @@ class AiConfig {
     return openRouterApiKey;
   }
 
-  static const openRouterModel = 'google/gemini-2.5-flash:free';
+  static const openRouterModel = 'google/gemma-4-26b-a4b-it:free';
   static const openFoodFactsBaseUrl = 'https://world.openfoodfacts.org/cgi';
 
   static const geminiModel = 'gemini-2.5-flash';
   static const geminiFallbackModel = 'gemini-3.1-flash-lite';
-  static const groqModel = 'llama-3.3-70b-versatile';
+  static const groqModel = 'openai/gpt-oss-20b';
 
   static bool get isGroqConfigured => groqApiKey.isNotEmpty;
 

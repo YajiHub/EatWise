@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:eatwise/core/ai/ai_config.dart';
 import 'package:eatwise/core/ai/ai_error.dart';
 import 'package:eatwise/core/ai/ai_json_parser.dart';
 import 'package:eatwise/core/ai/ai_prompt_builder.dart';
@@ -13,7 +14,7 @@ class OpenRouterProvider {
 
   OpenRouterProvider({required this.apiKey, http.Client? client, String? model})
       : _client = client ?? http.Client(),
-        model = model ?? 'google/gemini-2.5-flash:free';
+        model = model ?? AiConfig.openRouterModel;
 
   static const _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -70,21 +71,34 @@ class OpenRouterProvider {
 
       debugPrint('[OpenRouter] Response status: ${response.statusCode}');
 
+      if (response.statusCode == 404) {
+        try {
+          final err = jsonDecode(response.body);
+          final msg = err['error']?['message'] ?? 'Model unavailable or discontinued';
+          debugPrint('[OpenRouter] 404 error: $msg');
+          throw AiModelUnavailableException('OpenRouter', msg);
+        } catch (e) {
+          if (e is AiModelUnavailableException) rethrow;
+          debugPrint('[OpenRouter] 404 error: ${response.body}');
+          throw const AiModelUnavailableException('OpenRouter', 'Model not found on OpenRouter');
+        }
+      }
+
       if (response.statusCode == 429) {
-        debugPrint('[OpenRouter] Rate limited');
-        throw RateLimitedException('OpenRouter');
+        debugPrint('[OpenRouter] Rate limited: ${response.body}');
+        throw const RateLimitedException('OpenRouter');
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         debugPrint('[OpenRouter] Auth failed');
-        throw AiAuthException('OpenRouter');
+        throw const AiAuthException('OpenRouter');
       }
       if (response.statusCode >= 500) {
         debugPrint('[OpenRouter] Server error');
-        throw AiNetworkException('OpenRouter');
+        throw const AiNetworkException('OpenRouter');
       }
       if (response.statusCode == 402) {
         debugPrint('[OpenRouter] No credits');
-        throw AiAuthException('OpenRouter');
+        throw const AiAuthException('OpenRouter');
       }
 
       if (response.statusCode == 200) {
@@ -97,16 +111,18 @@ class OpenRouterProvider {
         }
         debugPrint('[OpenRouter] Empty choices');
       }
-      throw AiNetworkException('OpenRouter');
+      throw const AiNetworkException('OpenRouter');
     } on RateLimitedException {
       rethrow;
     } on AiAuthException {
       rethrow;
     } on AiContentFilteredException {
       rethrow;
+    } on AiModelUnavailableException {
+      rethrow;
     } catch (e) {
       debugPrint('[OpenRouter] Exception: $e');
-      throw AiNetworkException('OpenRouter');
+      throw const AiNetworkException('OpenRouter');
     }
   }
 

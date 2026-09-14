@@ -6,8 +6,8 @@ class AskAiService {
 
   AskAiService(this._orchestrator);
 
-  Future<ChatResult> sendMessage(String message) async {
-    return _orchestrator.sendChatMessage(message);
+  Future<ChatResult> sendMessage(String message, {bool saveToHistory = true}) async {
+    return _orchestrator.sendChatMessage(message, saveToHistory: saveToHistory);
   }
 
   Future<ChatResult> sendMessageWithHistory(

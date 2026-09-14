@@ -16,7 +16,6 @@ import 'package:eatwise/features/dashboard/providers/profile_provider.dart';
 import 'package:eatwise/features/dashboard/providers/stats_provider.dart';
 import 'package:eatwise/features/food_ai/domain/food_item.dart';
 import 'package:eatwise/features/food_ai/presentation/providers/gemini_provider.dart';
-import 'package:eatwise/features/food_ai/presentation/widgets/meal_type_selector.dart';
 
 const _uuid = Uuid();
 const _maxImages = 5;
@@ -1551,7 +1550,6 @@ class _MealResultCard extends StatelessWidget {
             : '${f.portionSizeGrams.toStringAsFixed(0)}g')
         .join(' • ');
 
-    final mealTypeLabel = (selectedMealType ?? 'meal').toUpperCase();
 
     return Container(
       margin: const EdgeInsets.only(left: 4, top: 6),

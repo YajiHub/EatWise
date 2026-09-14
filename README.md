@@ -1,226 +1,186 @@
-# 🍽️ EatWise — AI-Powered Nutrition & Fitness Tracker
+# EatWise — Intelligent Nutrition & Macro Telemetry
 
-> **Smart calorie counting and macro tracking for Filipino cuisine. Use food scale for more accurate results.**
-
----
-
-## 📖 Table of Contents
-1. [What is EatWise?](#what-is-eatwise)
-2. [App Screens & Navigation](#app-screens--navigation)
-3. [How to Run](#how-to-run)
-4. [Project Structure](#project-structure)
-5. [How Code Works (Layer by Layer)](#how-code-works)
-6. [State Management (Riverpod)](#state-management)
-7. [AI Integration Flow](#ai-integration-flow)
-8. [Database Schema](#database-schema)
-9. [How to Develop a Feature](#develop-feature)
-10. [Commands & Troubleshooting](#commands)
+<div align="center">
+  <img src="assets/images/app_logo.png" alt="EatWise Logo" width="100" />
+  <p><strong>A high-performance, offline-first macro and nutrition tracking application engineered for Philippine cuisine and athletic performance.</strong></p>
+</div>
 
 ---
 
-## What is EatWise?
+## 📌 Overview
 
-EatWise is a Flutter app that helps you track daily food, macros, calories, and weight using AI.
+**EatWise** is an offline-first fitness and nutrition tracking app built with **Flutter**, **Riverpod**, and **SQLite**. It addresses the common challenge of tracking localized Filipino diets—where mixed dishes (like *Sinigang*, *Adobo*, and *Kare-Kare*) and custom portions are notoriously difficult to log with Western-centric nutrition databases.
 
-| Feature | What It Does |
-|---|---|
-| **Dashboard** | Daily summary — calories ring, macro bars, weight chart, weekly stats |
-| **AI Scanner** | Photo → AI estimates food name + macros |
-| **Chat Log** | Type "I ate..." → AI parses into nutrition data |
-| **Barcode Scan** | Scan product → local food database lookup |
-| **History** | Past logs with calendar month view |
-| **Profile** | Set your details → auto BMI/BMR/TDEE targets |
-| **Fasting** | Intermittent fasting timer with eating window |
-| **Weight** | Log weight daily, see trend over time |
-EatWise - AI-Powered Nutrition & Fitness Tracker
+EatWise integrates a **4-tier multi-provider AI engine** paired with a **local Philippine Food and Nutrition Research Institute (FNRI) SQLite database**, allowing users to log meals through multimodal photo scans, barcodes, conversational AI, or rapid manual entry—with guaranteed offline uptime.
 
-
-Overview
 ---
 
-## App Screens & Navigation
+## 📸 App Interface
 
-5-tab bottom navigation:
+| Hub & Daily Telemetry | AI Meal Logging | History & Calendar | Profile & Targets |
+| :---: | :---: | :---: | :---: |
+| <img src="assets/images/app_logo.png" width="200" /> | <img src="assets/images/log-meal.png" width="200" /> | <img src="assets/images/history.png" width="200" /> | <img src="assets/images/profile-and-insights.png" width="200" /> |
+| Concentric dial & fasting window | Multi-provider AI & manual log | Calendar & weekly trends | Mifflin-St Jeor BMR/TDEE targets |
+
+---
+
+## ⚡ Key Engineering Highlights
+
+### 1. 4-Tier Resilient AI Fallback Architecture
+Public API rate limits (HTTP 429) and upstream model deprecations (HTTP 404) are handled by a multi-provider orchestrator with integrated circuit breakers:
 
 ```
-┌─────────┬────────┬────────┬─────────┬─────────┐
-│  Home   │  Scan  │  Log   │ History │ Profile │
-└─────────┴────────┴────────┴─────────┴─────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    User Meal Input                      │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+       ┌────────────────────▼────────────────────┐
+       │ Tier 1: Google Gemini 2.5 Flash Vision  │ ──► [Success]
+       └────────────────────┬────────────────────┘
+                            │ (Quota Exceeded / 429 / Error)
+       ┌────────────────────▼────────────────────┐
+       │ Tier 2: Groq (Llama / Open Source LLM)   │ ──► [Success]
+       └────────────────────┬────────────────────┘
+                            │ (Unavailable / 429)
+       ┌────────────────────▼────────────────────┐
+       │ Tier 3: OpenRouter Secondary Fallback   │ ──► [Success]
+       └────────────────────┬────────────────────┘
+                            │ (Offline / Exhausted)
+       ┌────────────────────▼────────────────────┐
+       │ Tier 4: Offline Local SQLite Database   │ ──► [Guaranteed Local Match]
+       │ (Philippine FNRI Nutrition Dataset)     │
+       └─────────────────────────────────────────┘
 ```
 
-**Home** — Calorie ring, macro rings, weight card, weekly chart
-**Scan** — Photo (AI Vision) or Barcode scanner modes
-**Log** — Type food description → AI parses into editable items
-**History** — List view + calendar view with date navigation
-**Profile** — Name/age/weight/goal → auto-calculates targets → apply to dashboard
+* **Instant Failover**: Detects hard quota limits and model errors immediately without blocking the UI thread with redundant retry delays.
+* **Privacy & BYOK**: Supports user-provided API keys stored securely in `FlutterSecureStorage` with zero cloud lock-in.
+
+### 2. Athletic Obsidian Design System
+* **Concentric Budget Dial**: Custom-painted canvas showing real-time calorie budget depletion, progress ratios, and dynamic color shifts for surplus/deficit states.
+* **Independent Fasting Capsule**: Visual intermittent fasting tracker (16:8, 18:6, custom) linked directly to timer controls.
+* **Zero-Latency Theme Switching**: Caches immutable `ThemeData` instances and overrides Flutter's default 200ms frame interpolation loop with `Duration.zero` for instantaneous light/dark toggling.
+
+### 3. Comprehensive Logging Modalities
+1. **AI Vision Camera Scan**: Takes food photos, parses complex multi-item dishes into itemized macros, and generates editable portions.
+2. **Philippine Barcode Scanner**: Reads EAN-13 barcodes with local offline database lookup and OpenFoodFacts fallback.
+3. **Conversational AI Coach**: Natural language chat interface ("I ate 2 eggs and 1 pandesal") that isolates conversation history from background daily telemetry.
+4. **Instant Manual Food Entry**: Dedicated floating action button routing directly to quick manual logging with zero network overhead.
+
+### 4. Health & Metabolism Analytics
+* **Mifflin-St Jeor Engine**: Calculates basal metabolic rate (BMR) and total daily energy expenditure (TDEE) based on user goal (cut, maintain, bulk).
+* **Dynamic Streak Counter**: Computes consecutive active tracking days with morning grace periods.
+* **Historical Macro Grid**: Week-over-week calorie charts and monthly calendar views for diet consistency review.
 
 ---
 
-## How to Run
+## 🛠️ Architecture & Tech Stack
 
-### Prerequisites
-- Flutter 3.22+
-- Android Studio or VS Code + Flutter extensions
-- Android phone/emulator
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Framework** | Flutter (Dart 3.x) | Cross-platform mobile client |
+| **State Management** | Flutter Riverpod 2.x | Reactive dependency injection & state synchronization |
+| **Local Database** | SQLite (`sqflite`) | Local-first food logs, weight records, and FNRI database |
+| **Navigation** | `go_router` 14.x | Declarative routing with `StatefulShellRoute` branch persistence |
+| **AI Vision** | Google Gemini (`google_generative_ai`) | Multimodal food identification & nutrient estimation |
+| **AI Inference** | Groq & OpenRouter APIs | High-speed low-latency text fallback orchestration |
+| **Secure Storage** | `flutter_secure_storage` | Keystore/Keyring encrypted API key persistence |
+| **Hardware / Sensors**| `camera`, `mobile_scanner` | Live optical camera feed & barcode detection |
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 lib/
-├── main.dart                    # Entry → loads .env → ProviderScope(EatWiseApp)
-├── app.dart                     # MaterialApp.router with theming
-├── core/                        # 🧠 Shared infrastructure
-│   ├── ai/                      # Gemini, Groq, OpenRouter services
-│   ├── constants/               # Colors, keys
-│   ├── database/                # SQLite (app_database.dart)
-│   ├── router/                  # GoRouter with 5-tab bottom nav
-│   ├── storage/                 # Secure API key storage
-│   └── theme/                   # Light/dark themes
-├── features/                    # 🏠 Feature modules
-│   ├── dashboard/               # Home + History + Profile + Manual Log
-│   │   ├── data/                # Repository classes
-│   │   ├── models/              # DailySummary, WeeklyStats, etc.
-│   │   ├── providers/           # Riverpod state providers
-│   │   └── presentation/        # Screens + widgets
-│   ├── food_ai/                 # Camera scan + barcode
-│   ├── chat_log/                # Text chat for food logging
-│   └── settings/                # Settings screen
-└── services/                    # 🔗 Bridging business logic
+├── app.dart                                # MaterialApp.router, theme configuration
+├── main.dart                               # Async bootstrap, database init, ProviderScope
+├── core/
+│   ├── ai/                                 # AI Fallback Orchestrator, Groq & OpenRouter providers
+│   ├── constants/                          # AppColors, typography, layout dimensions
+│   ├── database/                           # SQLite database helper, FNRI food catalog
+│   ├── router/                             # GoRouter routes & bottom navigation shell
+│   ├── storage/                            # Secure storage service for API keys
+│   └── theme/                              # Obsidian light & dark themes, mode provider
+├── features/
+│   ├── chat_log/                           # Conversational AI coach & query parser
+│   ├── dashboard/                          # Hub, Athletic Dial, History, Profile & Manual Log
+│   │   ├── presentation/
+│   │   │   ├── providers/                  # Stats, insights, and macro providers
+│   │   │   ├── screens/                    # DashboardScreen, HistoryScreen, ProfileScreen
+│   │   │   └── widgets/                    # AthleticHeroDial, WeeklyChart, MonthlyCalendar
+│   ├── food_ai/                            # Camera scanner, Barcode HUD, food item cards
+│   ├── planner/                            # Daily routines, workout presets, hydration goals
+│   └── settings/                           # API keys management, fasting schedule toggles
+└── services/                               # Food log services, prompt builders, telemetry
 ```
 
 ---
 
-## How Code Works
+## 🚀 Getting Started
 
-### Entry Point Flow
-```
-main() → LoadingScreen → init(.env, keys) → ProviderScope(EatWiseApp)
-```
+### Prerequisites
+* Flutter SDK (3.22 or newer)
+* Android SDK (API 24+) or iOS device
+* Android Studio / VS Code with Flutter extension
 
-### Dashboard Data Flow
-```
-DashboardScreen
-  watches targetCaloriesProvider    → AppDatabase (settings table)
-  watches dailyTotalsProvider       → AppDatabase (logs table)
-  watches profileProvider           → AppDatabase (settings)
-  watches weightProvider            → AppDatabase (weights table)
-  watches weeklyChartProvider       → DashboardRepository → SQL
-    → Models: DailySummary, WeeklyStats
-      → Widgets: CalorieRingChart, MacroRingsRow, WeightCard
-```
+### Installation
 
-### Profile Data Flow
-```
-ProfileScreen
-  → User enters name/age/weight/goal → profileProvider.update()
-    → ProfileData calculates: BMI, BMR, TDEE, recommendedCalories
-      → "Apply Targets" → saves to settings table
-        → Dashboard reads targets from providers
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/YajiHub/EatWise.git
+   cd EatWise
+   ```
 
----
+2. **Install dependencies:**
+   ```bash
+   flutter pub get
+   ```
 
-## AI Integration Flow
+3. **Configure Environment:**
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   Populate your keys (optional—app functions offline using local database and supports in-app BYOK key configuration):
+   ```ini
+   GEMINI_API_KEY=your_gemini_api_key_here
+   GROQ_API_KEY=your_groq_api_key_here
+   OPENROUTER_API_KEY=your_openrouter_api_key_here
+   ```
 
-### Photo Scanning
-```
-Photo → food_ai_screen._pickAndAnalyze()
-  → gemini_vision_service.analyzeImage(file)
-    → Base64 encode → Gemini Vision API
-      → ai_json_parser: clean markdown → validate JSON
-        → MealAnalysis { foods, totals, summary }
-          → Editable cards → confirm → save to DB
-```
-
-### Chat Logging (with Fallback)
-```
-Text → chat_log_screen._send()
-  → ask_ai_service → ai_fallback_orchestrator
-    ├─ Gemini (primary) — gemini_chat_service.dart
-    ├─ Groq (fallback 1) — groq_provider.dart
-    └─ OpenRouter (fallback 2) — openrouter_provider.dart
-      → ai_json_parser → FoodItem list → editable cards → save
-```
-
-### Barcode Scanning
-```
-Barcode → mobile_scanner → barcode[0].rawValue
-  → local_food_db.search(barcode)
-    → Found: build FoodItem from match data
-    → Not found: "Not in database" dialog
-```
+4. **Run the Application:**
+   ```bash
+   flutter run --dart-define-from-file=.env
+   ```
 
 ---
 
-## Database Schema
+## 📦 Building for Production
 
-### `logs` — Food entries
-```sql
-CREATE TABLE logs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    name       TEXT NOT NULL,
-    log_date   TEXT NOT NULL,     -- 'YYYY-MM-DD'
-    meal_type  TEXT NOT NULL,     -- breakfast/lunch/dinner/snack
-    calories   REAL DEFAULT 0,
-    protein_g  REAL DEFAULT 0,
-    carbs_g    REAL DEFAULT 0,
-    fats_g     REAL DEFAULT 0,
-    portion_g  REAL,             -- grams
-    portion_desc TEXT            -- "1 cup"
-);
-```
-
-### `settings` — Key-value store
-```sql
-CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
--- Keys: profile_name, profile_age, target_calories, etc.
-```
-
-### `weights` — Weight history
-```sql
-CREATE TABLE weights (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    date       TEXT NOT NULL,
-    weight_kg  REAL NOT NULL,
-    notes      TEXT
-);
-```
-
----
-
-## How to Develop a Feature
-
-Example: Add Water Tracking
-
-1. **Create table** in `app_database.dart`
-2. **Add methods**: `logWater(date, ml)` and `getDailyWater(date)`
-3. **Create provider**: `dailyWaterProvider = FutureProvider.autoDispose`
-4. **Build widget**: add water card to dashboard
-5. **Add button**: quick "+" button for logging
-
----
-
-## Common Commands
+### Android Release APK
+Generate a standalone release APK signed for distribution:
 ```bash
-flutter run --release            # Run on device
-flutter build apk                # Build Android APK
-flutter analyze                  # Code check
-flutter test                     # Run tests
-flutter clean && flutter pub get # Full rebuild
-dart run build_runner build --delete-conflicting-outputs  # Generate code
+flutter build apk --release --dart-define-from-file=.env
 ```
-
-## Troubleshooting
-| Problem | Solution |
-|---|---|
-| API key error | Add keys to `.env` |
-| Barcode crash | Check camera permissions |
-| White screen | Verify `.env` exists |
-| Image not saving | Fixed — syncs before save |
-| Long decimals | Fixed — `.toStringAsFixed(0)` |
+The compiled APK will be located at:
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
 
 ---
 
-> **Built for tracking Filipino food. Eat wisely!** 🍽️
+## 🧪 Testing & Code Quality
+
+Run automated unit and widget test suites:
+```bash
+# Execute test suite
+flutter test
+
+# Run static analysis
+flutter analyze
+```
+
+---
+
+## 📄 License
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

@@ -159,6 +159,7 @@ class AiFallbackOrchestrator {
   Future<ChatResult> sendChatMessage(
     String message, {
     List<({String role, String text})> priorMessages = const [],
+    bool saveToHistory = true,
   }) async {
     // Build full conversation context from prior messages
     final contextMessage = _buildFullContext(message, priorMessages);
@@ -208,10 +209,12 @@ class AiFallbackOrchestrator {
       provider = 'Local Assistant';
     }
 
-    _recentChatHistory.add(message);
-    _recentChatHistory.add(response);
-    if (_recentChatHistory.length > _maxChatHistory * 2) {
-      _recentChatHistory.removeRange(0, _recentChatHistory.length - _maxChatHistory * 2);
+    if (saveToHistory) {
+      _recentChatHistory.add(message);
+      _recentChatHistory.add(response);
+      if (_recentChatHistory.length > _maxChatHistory * 2) {
+        _recentChatHistory.removeRange(0, _recentChatHistory.length - _maxChatHistory * 2);
+      }
     }
 
     return ChatResult(text: response, providerUsed: provider);
@@ -271,12 +274,33 @@ class AiFallbackOrchestrator {
         if (kDebugMode) debugPrint('[Orchestrator] $name AUTH FAILED — key may be invalid');
         breaker.forceOpen(const Duration(hours: 1));
         return null;
+      } on AiModelUnavailableException catch (e) {
+        if (kDebugMode) debugPrint('[Orchestrator] $name model unavailable: $e');
+        breaker.forceOpen(const Duration(minutes: 30));
+        return null;
       } on AiContentFilteredException {
         if (kDebugMode) debugPrint('[Orchestrator] $name content filtered');
         return null;
       } catch (e) {
+        final errStr = e.toString().toLowerCase();
+        final isQuotaExceeded = errStr.contains('quota exceeded') ||
+            errStr.contains('resource_exhausted') ||
+            errStr.contains('rate limit') ||
+            errStr.contains('429');
+        final isModelError = errStr.contains('404') || errStr.contains('model_not_found');
+
         if (kDebugMode) debugPrint('[Orchestrator] $name error (attempt ${attempt + 1}): $e');
         breaker.recordFailure();
+
+        if (isQuotaExceeded) {
+          breaker.forceOpen(const Duration(minutes: 1));
+          return null;
+        }
+        if (isModelError) {
+          breaker.forceOpen(const Duration(minutes: 30));
+          return null;
+        }
+
         if (attempt >= 2) return null;
         await Future.delayed(Duration(seconds: attempt + 1));
       }

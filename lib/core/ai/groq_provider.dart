@@ -71,24 +71,37 @@ class GroqProvider {
 
       debugPrint('[Groq] Response status: ${response.statusCode}');
 
+      if (response.statusCode == 404) {
+        try {
+          final err = jsonDecode(response.body);
+          final msg = err['error']?['message'] ?? 'Model not found';
+          debugPrint('[Groq] 404 error: $msg');
+          throw AiModelUnavailableException('Groq', msg);
+        } catch (e) {
+          if (e is AiModelUnavailableException) rethrow;
+          debugPrint('[Groq] 404 error: ${response.body}');
+          throw const AiModelUnavailableException('Groq', 'Model not found or discontinued');
+        }
+      }
+
       if (response.statusCode == 429) {
         debugPrint('[Groq] Rate limited');
-        throw RateLimitedException('Groq');
+        throw const RateLimitedException('Groq');
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
         debugPrint('[Groq] Auth failed — check API key');
-        throw AiAuthException('Groq');
+        throw const AiAuthException('Groq');
       }
       if (response.statusCode >= 500) {
         debugPrint('[Groq] Server error');
-        throw AiNetworkException('Groq');
+        throw const AiNetworkException('Groq');
       }
       if (response.statusCode == 400) {
         final err = jsonDecode(response.body);
         final msg = err['error']?['message'] ?? '';
         debugPrint('[Groq] 400 error: $msg');
-        if (msg.contains('safety') || msg.contains('content')) throw AiContentFilteredException('Groq');
-        throw AiNetworkException('Groq');
+        if (msg.contains('safety') || msg.contains('content')) throw const AiContentFilteredException('Groq');
+        throw const AiNetworkException('Groq');
       }
 
       if (response.statusCode == 200) {
@@ -101,16 +114,18 @@ class GroqProvider {
         }
         debugPrint('[Groq] Empty choices array');
       }
-      throw AiNetworkException('Groq');
+      throw const AiNetworkException('Groq');
     } on RateLimitedException {
       rethrow;
     } on AiAuthException {
       rethrow;
     } on AiContentFilteredException {
       rethrow;
+    } on AiModelUnavailableException {
+      rethrow;
     } catch (e) {
       debugPrint('[Groq] Exception: $e');
-      throw AiNetworkException('Groq');
+      throw const AiNetworkException('Groq');
     }
   }
 

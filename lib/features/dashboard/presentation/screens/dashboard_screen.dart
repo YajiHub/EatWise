@@ -54,12 +54,12 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       extendBody: true,
       floatingActionButton: FloatingActionButton(
-        tooltip: 'Log a meal',
-        onPressed: () => context.go('/chat-log'),
+        tooltip: 'Manual food log',
+        onPressed: () => context.push('/manual-log'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.black,
         elevation: 6,
-        child: const Icon(Icons.edit_note_rounded, size: 28),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(116),
@@ -68,7 +68,9 @@ class DashboardScreen extends ConsumerWidget {
           avatarUrl: avatarUrl,
           isDark: isDark,
           streak: streak,
-          onToggleTheme: () => ref.read(themeModeProvider.notifier).toggle(),
+          onToggleTheme: () => ref
+              .read(themeModeProvider.notifier)
+              .toggle(Theme.of(context).brightness),
         ),
       ),
       body: SingleChildScrollView(
@@ -83,7 +85,9 @@ class DashboardScreen extends ConsumerWidget {
               consumed: consumed,
               target: target,
               fastingLabel: '16:8 Fasting • Active',
+              showFasting: showFasting,
               onTap: () => _editCalorieTarget(context, ref),
+              onFastingTap: () => context.push('/fasting'),
             ),
 
             const SizedBox(height: 8),
@@ -271,16 +275,13 @@ class _HomeHeader extends StatelessWidget {
             // Row 1: Brand & Actions
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.bolt_rounded,
-                    color: AppColors.primary,
-                    size: 18,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/app_logo.png',
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(width: 8),

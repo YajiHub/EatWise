@@ -9,7 +9,10 @@ class AppTheme {
   static const _buttonRadius = BorderRadius.all(Radius.circular(10));
   static const _inputRadius = BorderRadius.all(Radius.circular(12));
 
-  static ThemeData get lightTheme {
+  static final ThemeData lightTheme = _buildLight();
+  static final ThemeData darkTheme = _buildDark();
+
+  static ThemeData _buildLight() {
     final cs = ColorScheme(
       brightness: Brightness.light,
       primary: const Color(0xFF1DB954),
@@ -38,7 +41,7 @@ class AppTheme {
     return _build(cs);
   }
 
-  static ThemeData get darkTheme {
+  static ThemeData _buildDark() {
     final cs = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.primary,

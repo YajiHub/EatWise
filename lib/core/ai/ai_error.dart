@@ -32,3 +32,11 @@ class AllProvidersExhaustedException implements Exception {
   @override
   String toString() => 'All $capability providers are currently unavailable. Try again later.';
 }
+
+class AiModelUnavailableException implements Exception {
+  final String providerName;
+  final String message;
+  const AiModelUnavailableException(this.providerName, [this.message = 'Model unavailable']);
+  @override
+  String toString() => '$providerName: $message';
+}
